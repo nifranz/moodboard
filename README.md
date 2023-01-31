@@ -13,8 +13,8 @@ node, version > 19.3.0
 ### AKCORE FRONTEND (VUE)
 
 The frontend is developed with the Vue framework for node. To run the Vue development server, while in the directory "repository/akcoreapp/" run  
-    <ol><li>- `npm install`</li>
-    <li>- `npm run serve` </li></ol> 
+    <ul><li>`npm install`</li>
+    <li>`npm run serve` </li></ul> 
 
 This will run a development server listening at port 8081.
 
