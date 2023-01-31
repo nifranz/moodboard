@@ -2,26 +2,31 @@
     {
         "id": "tn01",
         "name": "Alex",
-        "email": "maxm@email.com"
+        "email": "maxm@email.com",
+        "rolle": "01"
     },
     {
         "id": "tn02",
         "name": "Lukas",
-        "email": "maxf@email.com"
+        "email": "maxf@email.com",
+        "rolle": "01"
     },
     {
         "id": "tn02",
         "name": "Max",
-        "email": "maxf@email.com"
+        "email": "maxf@email.com",
+        "rolle": "02"
     },
     {
         "id": "tn02",
         "name": "Leon",
-        "email": "maxf@email.com"
+        "email": "maxf@email.com",
+        "rolle": "03"
     },
     {
         "id": "tn02",
         "name": "Niklas",
-        "email": "maxf@email.com"
+        "email": "maxf@email.com",
+        "rolle": "03"
     }
 ]

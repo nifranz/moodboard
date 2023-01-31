@@ -16,14 +16,13 @@
         </div>
         <div class="col-3">
           <div class="input-group mb-3">
-            <div class="dropdown">
-              <select class="form-control" aria-label="Default select example">
-                <option selected>Bitte Rolle auswählen</option>
-                <option value="1">Key-User</option>
-                <option value="2">User</option>
-                <option value="3">Change-Manager</option>
-              </select>
-            </div>
+            <span class="input-group-text" id="basic-addon1">Rolle</span>
+            <select class="form-control" aria-label="Default select example">
+              <option >Bitte Rolle auswählen</option>
+              <option selected v-bind:value="teiln.rolle">{{ teiln.rolle }}</option>
+              <option value="2">User</option>
+              <option value="3">Change-Manager</option>
+            </select>
           </div>
         </div>
         <div class="col-1">
@@ -35,6 +34,20 @@
 
 <script>
   import teilnehmerDB from '../../db/teilnehmer.json'
+  console.log(teilnehmerDB)
+  for (let teiln of teilnehmerDB) {
+    switch (teiln.rolle) {
+      case "01":
+        teiln.rolle = "Change Manager"
+        break;
+      case "02":
+        teiln.rolle = "Key-User"
+        break;
+      case "03":
+        teiln.rolle = "User"
+    }
+  }
+
   export default {
     name: "ProjectManagerVuew.vue",
     data(){
