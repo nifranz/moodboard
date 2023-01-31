@@ -4,20 +4,20 @@ This gitup-repository contains the source code of the akcore frontend app and ba
 
 # PREREQUISITES
 
-npm version > 9.2.0
-node version > 19.3.0
+npm, version > 9.2.0  
+node, version > 19.3.0  
 
 # BUILD INSTRUCTIONS
 
 
-## AKCORE FRONTEND (VUE)
+### AKCORE FRONTEND (VUE)
 
-The frontend is developed with the Vue framework for node. To run the Vue development server, while in the directory "repository/akcoreapp/" run
-    - `npm install`
-    - `npm run serve`
+The frontend is developed with the Vue framework for node. To run the Vue development server, while in the directory "repository/akcoreapp/" run  
+    <ol><li>- `npm install`</li>
+    <li>- `npm run serve` </li></ol> 
 
 This will run a development server listening at port 8081.
 
-## AKCORE BACKEND API (EXPRESSJS)
+### AKCORE BACKEND API (EXPRESSJS)
 
 TBD
