@@ -1,0 +1,27 @@
+[
+    {
+        "id": "tn01",
+        "name": "Alex",
+        "email": "maxm@email.com"
+    },
+    {
+        "id": "tn02",
+        "name": "Lukas",
+        "email": "maxf@email.com"
+    },
+    {
+        "id": "tn02",
+        "name": "Max",
+        "email": "maxf@email.com"
+    },
+    {
+        "id": "tn02",
+        "name": "Leon",
+        "email": "maxf@email.com"
+    },
+    {
+        "id": "tn02",
+        "name": "Niklas",
+        "email": "maxf@email.com"
+    }
+]
