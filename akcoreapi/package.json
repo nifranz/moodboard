@@ -6,5 +6,15 @@
     "finale-rest": "^1.2.0",
     "sequelize": "^6.28.0",
     "sqlite": "^4.1.2"
-  }
+  },
+  "name": "akcoreapi",
+  "version": "1.0.0",
+  "description": "backend api server with express.js for the akcore project",
+  "main": "./src/server.js",
+  "scripts": {
+    "serve": "node ./src/server.js"
+  },
+  "author": "nifranz@uni-potsdam.de",
+  "license": "ISC",
+  "devDependencies": {}
 }
