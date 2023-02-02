@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import TeilnehmerView from "../views/TeilnehmerView"
+import MitarbeiterView from "../views/MitarbeiterView"
 import NutzerView from "../views/NutzerView"
 import ProjekteView from "../views/ProjekteView"
 // import PageNotFound from "@/views/PageNotFound"
@@ -17,9 +17,9 @@ const routes = [
     component: NutzerView
   },
   {
-    path: '/teilnehmer',
-    name: 'TeilnehmerView',
-    component: TeilnehmerView
+    path: '/mitarbeiter',
+    name: 'MitarbeiterView',
+    component: MitarbeiterView
   },
   {
     path: '/projekte',

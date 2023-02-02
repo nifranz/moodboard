@@ -12,7 +12,7 @@ node, version > 19.3.0
 
 ### AKCORE FRONTEND (VUE)
 
-The frontend is developed with the Vue framework for node. To run the Vue development server, while in the directory "repository/akcoreapp/", run  
+The frontend is developed with the Vue.js frontend web-framework. To run the Vue development server, while in the directory "repository/akcoreapp/", run  
     <ul><li>`npm install`</li>
     <li>`npm run serve` </li></ul> 
 
@@ -20,4 +20,8 @@ This will run a development server listening at port 8081.
 
 ### AKCORE BACKEND API (EXPRESSJS)
 
-TBD
+The backend is developed with the express.js for node. To run the express.js api server, while in the directory "repository/akcoreapi/", run  
+    <ul><li>`npm install`</li>
+    <li>`npm run serve` </li></ul> 
+
+This will run a exprees.js api server listening at port 3001.

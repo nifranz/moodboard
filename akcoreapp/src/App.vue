@@ -11,7 +11,7 @@
             <router-link to="/nutzer" active-class="active" class="nav-link">Nutzer</router-link>           
           </li>
           <li class="nav-item">
-            <router-link to="/teilnehmer" active-class="active" class="nav-link">Teilnehmer</router-link>
+            <router-link to="/mitarbeiter" active-class="active" class="nav-link">Mitarbeiter</router-link>
           </li>
           <li class="nav-item">
             <router-link to="/projekte" active-class="active" class="nav-link">Projekte</router-link>
