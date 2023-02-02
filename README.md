@@ -2,12 +2,12 @@
 
 This gitup-repository contains the source code of the akcore frontend app and backend api developed as part of the the A&K-Project of ${PARTICIPANTS} at the University of Potsdam in the winter semester of 2022/2023.
 
-## PREREQUISITES
+## Prerequisites
 
 npm, version > 9.2.0  
 node, version > 19.3.0  
 
-## BUILD INSTRUCTIONS
+## Build Instructions
 
 
 ### AKCORE FRONTEND (VUE)
@@ -20,8 +20,18 @@ This will run a development server listening at port 8081.
 
 ### AKCORE BACKEND API (EXPRESSJS)
 
-The backend is developed with the express.js for node. To run the express.js api server, while in the directory "repository/akcoreapi/", run  
+The backend is developed with express.js for node. To run the express.js api server, while in the directory "repository/akcoreapi/", run  
     <ul><li>`npm install`</li>
     <li>`npm run serve` </li></ul> 
 
 This will run a exprees.js api server listening at port 3001.
+
+## Documentation
+
+### AKCORE FRONTEND (VUE)
+
+TBD
+
+### AKCORE BACKEND API (EXPRESSJS)
+
+TBD

@@ -15,8 +15,9 @@ export default {
             return req.data;
         });
     },
-    getMitarbeiter (org_id) {        
-        return this.execute('get', `/mitarbeiter/${org_id}`);
+    // MITARBEITER API
+    getMitarbeiterAll (org_id) {        
+        return this.execute('get', `/mitarbeiterAll/${org_id}`);
     },
     createMitarbeiter (data) {
         console.log(data);
@@ -28,6 +29,17 @@ export default {
     },
     deleteMitarbeiter (ma_id) {
         return this.execute('delete', `/mitarbeiter/${ma_id}`);
-    }
+    },
+    // PROJEKTE API
+    getProjekte (org_id) {        
+        return this.execute('get', `/projekt/${org_id}`);
+    },
+    getProjekt (org_id, proj_id) {
+        return this.execute('get', `/projekt/${org_id}/${proj_id}`);
+    },
+    createProjekt (data) {
+        console.log(data);
+        return this.execute('post', '/projekt', data);
+    },
 }
   

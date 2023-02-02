@@ -186,7 +186,7 @@ Mitarbeiter.belongsToMany(Projekt, { through: 'nimmt_teil' })
 // U for Update: HTTP PUT
 // D for Delete: HTTP DELETE
 
-app.get("/mitarbeiter/:org_id", async (req, res) => {
+app.get("/mitarbeiterAll/:org_id", async (req, res) => {
     let org_id = req.params.org_id;
     if (!org_id) return res.sendStatus(400);
     let mitarbeiter = await Mitarbeiter.findAll({where: { org_id: org_id}});

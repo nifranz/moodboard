@@ -26,7 +26,7 @@
             </select>
           </div>
         </div>
-        <div class="col-1">
+        <div class="col-2">
           <div class="btn-container">
             <button class="btn btn-outline-warning" @click.prevent="editMitarbeiter(ma)" type="submit">Edit</button>
             <button class="btn btn-danger" type="delete" @click.prevent="deleteMitarbeiter(ma)">Delete</button>
@@ -61,7 +61,7 @@
           </select> 
         </div>
       </div>
-      <div class="col-1">
+      <div class="col-2">
         <div class="btn-container">
           <button class="btn btn-outline-success" style="width:100%;" @click.prevent="createMitarbeiter" type="submit">Create</button>
         </div>
@@ -73,7 +73,7 @@
 <script>
   import api from '@/api'
   export default {
-    name: "ProjectManagerVuew.vue",
+    name: "MitarbeiterView.vue",
     data(){
         return{
             loading: false,
@@ -83,14 +83,12 @@
         }
     },
     async created () {
-      console.log(this)
-      console.log(this.model.ma_rolle)
       console.log(await this.refreshMitarbeiter());
     },
     methods: {
       async refreshMitarbeiter() {
         this.loading = true;
-        this.mitarbeiter = await api.getMitarbeiter(this.org_id);
+        this.mitarbeiter = await api.getMitarbeiterAll(this.org_id);
         console.log("Mitarbeiter:")
         console.log(this.mitarbeiter);
         this.loading = false;
@@ -146,6 +144,10 @@
 }
 .btn {
   flex: 1;
+}
+
+.col-2 {
+  width: 150px;
 }
 
 </style>
