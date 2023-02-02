@@ -32,7 +32,7 @@ export default {
     },
     // PROJEKTE API
     getProjekte (org_id) {        
-        return this.execute('get', `/projekt/${org_id}`);
+        return this.execute('get', `/projekte/${org_id}`);
     },
     getProjekt (org_id, proj_id) {
         return this.execute('get', `/projekt/${org_id}/${proj_id}`);

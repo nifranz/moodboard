@@ -1,7 +1,7 @@
 <template>
   <nav class="navbar navbar-expand-lg navbar-light bg-light">
     <div class="container-fluid">
-      <router-link to="/" active-class="active" class="navbar-brand">Adminpanel</router-link>
+      <span class="navbar-brand">A&K Adminpanel</span>
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
         <span class="navbar-toggler-icon"></span>
       </button>
@@ -44,9 +44,13 @@
 </template>
 
 <script>
+  // import CONSTANTS from '@/constants.js';
+  const CONSTANTS = {DEFAULT_ORG_ID: 1};
   export default { 
-    name : 'App'
+    name : 'App',
   }
+  // set default organisation
+  sessionStorage.setItem("org_id", CONSTANTS.DEFAULT_ORG_ID);
 </script>
 
 <style>

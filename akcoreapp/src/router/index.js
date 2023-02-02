@@ -2,14 +2,15 @@ import { createRouter, createWebHistory } from 'vue-router'
 import MitarbeiterView from "../views/MitarbeiterView"
 import NutzerView from "../views/NutzerView"
 import ProjekteView from "../views/ProjekteView"
-// import PageNotFound from "@/views/PageNotFound"
-import PageNotFound from "../views/PageNotFound"
+import PageNotFound from "@/views/PageNotFound"
+import CreateProjektView from "@/views/CreateProjektView"
+
 
 const routes = [
   {
     path: '/',
     name: 'home',
-    component: PageNotFound
+    redirect: '/nutzer'
   },
   {
     path: '/nutzer',
@@ -30,6 +31,11 @@ const routes = [
     path: '/:patchMatch(.*)*',
     name: 'PageNotFound',
     component: PageNotFound
+  },
+  {
+    path: '/projekte/createNew',
+    name: 'CreateProjektView',
+    component: CreateProjektView
   }
 ]
 

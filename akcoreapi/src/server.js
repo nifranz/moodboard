@@ -137,6 +137,10 @@ Projekt.init({
         type: DataTypes.STRING,
         field: 'proj_name'
     },
+    proc_descr: {
+        type: DataTypes.STRING,
+        field: 'proj_descr'
+    },
     proj_startDate: {
         type: DataTypes.DATEONLY,
         field: 'proj_startDate'
@@ -178,7 +182,6 @@ Projekt.belongsTo(Organisation, { foreignKey: "org_id" });
 Umfrage.belongsTo(Projekt, { foreignKey: "proj_id" })
 
 Mitarbeiter.belongsToMany(Projekt, { through: 'nimmt_teil' })
-
 
 // Create REST API endpoints
 // C for Create: HTTP POST
@@ -229,8 +232,20 @@ app.delete("/mitarbeiter/:ma_id", (req, res) => {
     return res.send("GET: Mitarbeiter");
 });
 
+app.get("/projekte/:org_id", async (req, res) => {
+    let org_id = req.params.org_id;
+    console.log(org_id)
+    if (!org_id) return res.sendStatus(400);
+    
+    let projekte = await Projekt.findAll({where: { org_id: org_id }});
+    console.log(projekte)
+    return res.send(projekte);
+});
+
+
+
 mysqldb
-    .sync({ force: false })
+    .sync({ alter: true })
     .then(() => {
         app.listen(port, () => {
             console.log('listening to port localhost:' + port)
