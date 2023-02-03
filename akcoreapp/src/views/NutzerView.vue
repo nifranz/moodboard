@@ -33,6 +33,7 @@
       setOrg(org_id) {
         sessionStorage.setItem("org_id", org_id);
         console.log("org_id set in localStorage to " + sessionStorage.org_id);
+        console.log(document.cookie)
       }
     }
   }

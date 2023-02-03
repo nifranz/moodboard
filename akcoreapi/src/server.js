@@ -175,6 +175,10 @@ Umfrage.init({
     modelName: 'umfrage'
 });
 
+// class nimmt_teil extends Model {
+
+// }
+
 Mitarbeiter.belongsTo(Organisation, { foreignKey: "org_id" });
 
 Projekt.belongsTo(Organisation, { foreignKey: "org_id" });
@@ -182,6 +186,7 @@ Projekt.belongsTo(Organisation, { foreignKey: "org_id" });
 Umfrage.belongsTo(Projekt, { foreignKey: "proj_id" })
 
 Mitarbeiter.belongsToMany(Projekt, { through: 'nimmt_teil' })
+
 
 // Create REST API endpoints
 // C for Create: HTTP POST
@@ -245,7 +250,7 @@ app.post("/projekt", async (req, res) => {
     console.log("POST /projekt; request-body: ");
     data = req.body;
 
-    if(!data.proj_name || !data.proj_descr || !data.proj_startDate || !data. proj_endDate) return res.status(400).send("NO");
+    if(!data.proj_name || !data.proj_descr || !data.proj_startDate || !data.proj_endDate || !data.teilnehmer) return res.status(400).send("NO");
     console.log("inserting");
     await Projekt.create(data);
 

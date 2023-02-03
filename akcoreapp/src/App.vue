@@ -50,6 +50,7 @@
     name : 'App',
   }
   // set default organisation
+  document.cookie = {org_id: CONSTANTS.DEFAULT_ORG_ID};
   sessionStorage.setItem("org_id", CONSTANTS.DEFAULT_ORG_ID);
 </script>
 
