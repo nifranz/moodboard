@@ -54,7 +54,7 @@
         <div class="col-3">
           <div class="input-group mb-3">
             <span class="input-group-text" id="basic-addon1">Rolle</span>
-            <select class="form-control" v-on:click="cl" v-model="model.ma_rolle" aria-label="Default select example">
+            <select class="form-control" v-model="model.ma_rolle" aria-label="Default select example">
               <option value=undefined>Bitte Rolle auswählen</option>
               <option value="Key-User">Key-User</option>
               <option value="User">User</option>

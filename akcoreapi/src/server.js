@@ -137,7 +137,7 @@ Projekt.init({
         type: DataTypes.STRING,
         field: 'proj_name'
     },
-    proc_descr: {
+    proj_descr: {
         type: DataTypes.STRING,
         field: 'proj_descr'
     },
@@ -228,18 +228,28 @@ app.delete("/mitarbeiter/:ma_id", (req, res) => {
     Mitarbeiter.destroy({
         where: {ma_id: req.params.ma_id}
     })
-    console.log(req.params);
     return res.send("GET: Mitarbeiter");
 });
 
 app.get("/projekte/:org_id", async (req, res) => {
     let org_id = req.params.org_id;
-    console.log(org_id)
+
     if (!org_id) return res.sendStatus(400);
     
     let projekte = await Projekt.findAll({where: { org_id: org_id }});
-    console.log(projekte)
+
     return res.send(projekte);
+});
+
+app.post("/projekt", async (req, res) => {
+    console.log("POST /projekt; request-body: ");
+    data = req.body;
+
+    if(!data.proj_name || !data.proj_descr || !data.proj_startDate || !data. proj_endDate) return res.status(400).send("NO");
+    console.log("inserting");
+    await Projekt.create(data);
+
+    return res.sendStatus(200);
 });
 
 

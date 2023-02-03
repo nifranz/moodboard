@@ -4,10 +4,23 @@
     <router-link to="/projekte/createNew" class="btn btn-outline-success">Neues Projekt erstellen</router-link>
     <div class="card-container mt-4">
       <div class="card" v-for="proj in projekte" :key="proj">
+        <div class="card-header">
+          <ul class="nav nav-tabs card-header-tabs">
+            <li class="nav-item">
+              <a class="nav-link active" aria-current="true" href="#">Info</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="#">Umfragen</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="#">Teilnehmer</a>
+            </li>
+          </ul>
+        </div>
         <div class="card-body">          
           <h5 class="card-title">{{ proj.proj_name }}</h5>
-          <p class="card-text">{{ proj.proc_descr }}</p>
-          <a href="#" class="btn btn-primary">Projekt öffnen</a>
+          <p class="card-text">{{ proj.proj_descr }}</p>
+          
         </div>
         <ul class="list-group list-group-flush">
           <li class="list-group-item">
@@ -18,6 +31,10 @@
           </li>
           <li class="list-group-item">Anzahl Teilnehmer: 5</li>
         </ul>
+        <div class="d-grid w-75 mx-auto">
+          <a href="#" class="btn btn-primary">Projekt öffnen</a>
+        </div>
+        
         <div class="card-footer text-success">
           Projekt aktiv
         </div>
@@ -63,6 +80,10 @@
 .card {
   height: 150px;
   flex: 400px 1;
+}
+.ctr {
+  display: flex;
+  justify-content: center;
 }
 
 </style>
