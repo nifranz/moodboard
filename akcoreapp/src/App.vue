@@ -1,7 +1,7 @@
 <template>
   <nav class="navbar navbar-expand-lg navbar-light bg-light">
     <div class="container-fluid">
-      <span class="navbar-brand">A&K Adminpanel</span>
+      <span class="navbar-brand">A&K AdminPanel</span>
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
         <span class="navbar-toggler-icon"></span>
       </button>
@@ -45,16 +45,30 @@
 
 <script>
   // import CONSTANTS from '@/constants.js';
-  const CONSTANTS = {DEFAULT_ORG_ID: 1};
+  const CONSTANTS = {DEFAULT_organisationId: 1};
   export default { 
     name : 'App',
+    data() {
+      return {
+        organisationName: "LSWI-Lehrstuhl"
+      }
+    },
+    methods: {
+      updateOrganisationName(organisationName) {
+        this.organisationName = organisationName;
+      }
+    }
   }
   // set default organisation
-  document.cookie = {org_id: CONSTANTS.DEFAULT_ORG_ID};
-  sessionStorage.setItem("org_id", CONSTANTS.DEFAULT_ORG_ID);
+  document.cookie = {organisationId: CONSTANTS.DEFAULT_organisationId};
+  sessionStorage.setItem("organisationId", CONSTANTS.DEFAULT_organisationId);
 </script>
 
 <style>
+
+.body {
+  overflow-y: scroll;
+}
 
 .container {
   margin-top: 20px;

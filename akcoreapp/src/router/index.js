@@ -4,6 +4,7 @@ import NutzerView from "../views/NutzerView"
 import ProjekteView from "../views/ProjekteView"
 import PageNotFound from "@/views/PageNotFound"
 import CreateProjektView from "@/views/CreateProjektView"
+import ProjektView from "@/views/ProjektView"
 
 
 const routes = [
@@ -36,6 +37,12 @@ const routes = [
     path: '/projekte/createNew',
     name: 'CreateProjektView',
     component: CreateProjektView
+  },
+  {
+    path: '/projekte/:projektId',
+    name: 'ProjektView',
+    component: ProjektView,
+    props: true
   }
 ]
 

@@ -1,19 +1,120 @@
+const fs = require('fs/promises')
 const express = require('express')
 const cors = require('cors')
 const bodyParser = require('body-parser')
 const {Sequelize, DataTypes, Model} = require('sequelize')
-const finale = require('finale-rest')
+const axios = require('axios')
+const { release } = require('os')
 try {
     var connection = require('./connection')
 } catch (e) {
-    console.log('Missing "connection.js"-file in /src/. No connection established.')
+    console.log('Missing "connection.js"-file in /src/connection. No connection established.')
+    /* required ./connection.js' structure:
+        const db_name = 'akcoredb';
+        const db_username = '*****';
+        const db_password = '*****';
+        const db_host = 'localhost'
+        
+        const ls_username = '*****';
+        const ls_password = '*****';
+        
+        module.exports = {
+            db_name,
+            db_username,
+            db_password,
+            db_host,
+            ls_username,
+            ls_password
+        }
+    */
 }
 
-const port = 3001;
+const LIME_RPC_URL = 'http://localhost/index.php/admin/remotecontrol/';
+/*
+    @param id: rpc id
+    @param method: the rpc method to be used
+    @param params: the rpc params to send to the server
+*/
+async function lrpc_req(id, method, params) {
+    const response = await axios.post(LIME_RPC_URL, {
+        id: id,
+        method: method,
+        params: params,
+    }, {
+        headers: {
+        'Content-Type': 'application/json',
+        },
+    });       
+    console.log("Response: ", response.data);
+    if (response.data.error) return response.data.error;
+    return response.data.result;
+}
+
+
+class LRPC {
+    #sessionKey;
+    #activeConnection;
+    constructor() {
+        this.sessionKey = "";
+        this.activeConnection = false;
+    }
+
+    async openConnection() {
+        try {
+            if (this.activeConnection) {
+                throw new Error("Connection already active");
+            }
+            let data = await lrpc_req('test', 'get_session_key', [connection.ls_username, connection.ls_password]);
+            if (!data) return null;
+            this.sessionKey = data;
+            this.activeConnection = true;
+            console.log("Connection to LimeSurvey RPC established!");
+            return 1;
+        } catch (error) {
+            console.log(error);
+            return 0;
+        }
+    }
+
+    async closeConnection() {
+        try {
+            if (!this.activeConnection) {
+                throw new Error("No active connection!");
+            }
+            await lrpc_req('test','release_session_key', [this.sessionKey]);
+            this.sessionKey = "";   
+            this.activeConnection = false;
+            console.log("Connection to LimeSurvey RPC closed!");
+        } catch (error) {
+            console.log(error);
+        }
+    }
+
+    getSurveys() {
+        
+    }
+
+    connectionIsActive () {
+        return this.activeConnection;
+    }
+}
+
+
+const SERVER_ROOTDIR = '/home/nifranz/dev/git/upgit-nifranz/akcore/akcoreapi/'
+
+const PORT = 3001;
 let app = express();
 
-// app.listen(port, () => {
-//     console.log("Example app listening on port " + port);
+const HTTP = {
+    OK: 200, 
+    CREATED: 201, 
+    BAD_REQUEST: 400, 
+    ENTITY_NOT_FOUND: 406,
+    INTERNAL_ERROR: 500,
+}
+
+// app.listen(PORT, () => {
+//     console.log("Example app listening on PORT " + PORT);
 // });
 
 app.use(cors());
@@ -28,10 +129,10 @@ let sqlitedb = new Sequelize({
 
 // define sqliteMitarbeiter model
 let sqliteMitarbeiter = sqlitedb.define('sqliteMitarbeiter', {
-    ma_id: Sequelize.STRING,
-    ma_name: Sequelize.STRING,
-    ma_email: Sequelize.STRING,
-    ma_rolle: Sequelize.STRING
+    mitarbeiterId: Sequelize.STRING,
+    mitarbeiterName: Sequelize.STRING,
+    mitarbeiterEmail: Sequelize.STRING,
+    mitarbeiterRolle: Sequelize.STRING
 });
 
 // Initialize finale
@@ -51,8 +152,8 @@ let userResource = finale.resource({
 sqlitedb
   .sync({ force: true })
   .then(() => {
-    app.listen(port, () => {
-      console.log('listening to port localhost:'+ port)
+    app.listen(PORT, () => {
+      console.log('listening to PORT localhost:'+ PORT)
     })
   })
   */
@@ -61,7 +162,7 @@ sqlitedb
 // Defining the connection to mariadb on localhost with sequalize
 if (!connection) return;
 
-let mysqldb = new Sequelize(
+let akcoredb = new Sequelize(
     connection.db_name,
     connection.db_username,
     connection.db_password,
@@ -72,120 +173,106 @@ let mysqldb = new Sequelize(
 )
 
 // Establishing a connection with sequlalize to the mysql "sequalizedb" database
-mysqldb.authenticate().then(() => {
+akcoredb.authenticate().then(() => {
     console.log('Connection has been established successfully.');
 }).catch((error) => {
     console.error('Unable to connect to the database: ', error);
 });
 
-class Organisation extends Model {}
-Organisation.init({
-    org_id: {
+const Organisation = akcoredb.define('organisation', {
+    organisationId:{
         type: DataTypes.INTEGER,
-        field: 'org_id',
         primaryKey: true,
         autoIncrement: true
     },
-    org_name: {
-        type: DataTypes.STRING,
-        field: 'org_name'
+    organisationName:{
+        type: DataTypes.STRING
     }
 }, {
-    sequelize: mysqldb,
-    modelName: 'organisation'
+    timestamps: false
 });
 
-// recreating the table
-// Organisation.sync({force:true});
-// Organisation.create({org_id: 1, org_name: "LSWI-Lehrstuhl"});
-
-
-class Mitarbeiter extends Model {}
-Mitarbeiter.init({
-    ma_id: {
+const Mitarbeiter = akcoredb.define('mitarbeiter', {
+    mitarbeiterId:{
         type: DataTypes.INTEGER,
-        field: 'ma_id',
         primaryKey: true,
         autoIncrement: true
     },
-    ma_name: {
-        type: DataTypes.STRING,
-        field: 'ma_name'
+    mitarbeiterName: {
+        type: DataTypes.STRING
     },
-    ma_email: {
-        type: DataTypes.STRING,
-        field: 'ma_email'
+    mitarbeiterEmail: {
+        type: DataTypes.STRING
     },
-    ma_rolle: {
-        type: DataTypes.STRING,
-        field: 'ma_rolle'
+    mitarbeiterRolle: {
+        type: DataTypes.STRING
     }
 }, {
-    sequelize: mysqldb,
-    modelName: 'mitarbeiter'
+    timestamps: false
 });
 
-class Projekt extends Model {}
-Projekt.init({
-    proj_id: {
+const Projekt = akcoredb.define('projekt', {
+    projektId:{
         type: DataTypes.INTEGER,
-        field: 'proj_id',
         primaryKey: true,
         autoIncrement: true
     },
-    proj_name: {
-        type: DataTypes.STRING,
-        field: 'proj_name'
+    projektName: {
+        type: DataTypes.STRING
     },
-    proj_descr: {
-        type: DataTypes.STRING,
-        field: 'proj_descr'
+    projektBeschreibung: {
+        type: DataTypes.STRING
     },
-    proj_startDate: {
-        type: DataTypes.DATEONLY,
-        field: 'proj_startDate'
+    projektStartDate: {
+        type: DataTypes.DATEONLY
+
     },
-    proj_endDate: {
-        type: DataTypes.DATEONLY,
-        field: 'proj_endDate'
+    projektEndDate: {
+        type: DataTypes.DATEONLY
+    },
+    projektIsDraft: {
+        type: DataTypes.BOOLEAN
     }
 }, {
-    sequelize: mysqldb,
-    modelName: 'projekt'
+    timestamps: false
 });
 
-class Umfrage extends Model {}
-Umfrage.init({
-    umfr_id: {
+const Umfrage = akcoredb.define('umfrage', {   
+    umfrageId:{
         type: DataTypes.INTEGER,
-        field: 'umfr_id',
         primaryKey: true,
         autoIncrement: true
+    }, 
+    umfrageStartDate: {
+        type: DataTypes.DATEONLY
     },
-    proj_startDate: {
-        type: DataTypes.DATEONLY,
-        field: 'umfr_startDate'
+    umfrageEndDate: {
+        type: DataTypes.DATEONLY
     },
-    proj_endDate: {
-        type: DataTypes.DATEONLY,
-        field: 'umfr_endDate'
+    umfrageLimesurveyId: {
+        type: DataTypes.STRING
     }
 }, {
-    sequelize: mysqldb,
-    modelName: 'umfrage'
+    timestamps: false
 });
 
-// class nimmt_teil extends Model {
+const ProjektTeilnahme = akcoredb.define('projektTeilnahme', { /* no fields given */}, {
+    timestamps: false
+});
 
-// }
+Organisation.hasMany(Mitarbeiter, {foreignKey: 'organisationId'});
+Mitarbeiter.belongsTo(Organisation, {foreignKey: 'organisationId'});
 
-Mitarbeiter.belongsTo(Organisation, { foreignKey: "org_id" });
+Organisation.hasMany(Projekt, {foreignKey: 'organisationId'});
+Projekt.belongsTo(Organisation, {foreignKey: 'organisationId'});
 
-Projekt.belongsTo(Organisation, { foreignKey: "org_id" });
+Projekt.hasMany(Umfrage, {foreignKey: 'projektId'});
+Umfrage.belongsTo(Projekt, {foreignKey: 'projektId'});
 
-Umfrage.belongsTo(Projekt, { foreignKey: "proj_id" })
+Projekt.belongsToMany(Mitarbeiter, { through: 'projektTeilnahme', uniqueKey: false });
+Mitarbeiter.belongsToMany(Projekt, { through: 'projektTeilnahme', uniqueKey: false });
 
-Mitarbeiter.belongsToMany(Projekt, { through: 'nimmt_teil' })
+// Mitarbeiter.belongsToMany(Projekt, { through: 'nimmtTeil' })
 
 
 // Create REST API endpoints
@@ -194,76 +281,139 @@ Mitarbeiter.belongsToMany(Projekt, { through: 'nimmt_teil' })
 // U for Update: HTTP PUT
 // D for Delete: HTTP DELETE
 
-app.get("/mitarbeiterAll/:org_id", async (req, res) => {
-    let org_id = req.params.org_id;
-    if (!org_id) return res.sendStatus(400);
-    let mitarbeiter = await Mitarbeiter.findAll({where: { org_id: org_id}});
+app.get("/organisations", async (req, res) => {
+    let organisations = await Organisation.findAll();
+    return res.send(organisations);
+});
+
+app.get("/mitarbeiterAll/:organisationId", async (req, res) => {
+    let organisationId= req.params.organisationId;
+    if (!organisationId) return res.sendStatus(HTTP.BAD_REQUEST);
+    if(!(await Organisation.findOne({where:{organisationId: organisationId}}))) return res.sendStatus(HTTP.ENTITY_NOT_FOUND);
+
+    let mitarbeiter = await Mitarbeiter.findAll({where: { organisationId: organisationId}});
+
     return res.send(mitarbeiter);
 });
 
 app.post("/mitarbeiter", async (req, res) => {
-    console.log("POST /mitarbeiter; request-body: ");
-    data = req.body;
+    data = req.body; // the data sent by the client in request body
 
-    if(!data.ma_name || !data.ma_email || !data.ma_rolle) return res.status(400).send("NO");
-    console.log("inserting");
-    await Mitarbeiter.create({ma_name: data.ma_name, ma_email: data.ma_email, ma_rolle: data.ma_rolle, org_id: data.org_id});
+    if(!data.mitarbeiterName || !data.mitarbeiterEmail || !data.mitarbeiterRolle) return res.status(HTTP.BAD_REQUEST); 
 
-    return res.sendStatus(200);
+    await Mitarbeiter.create({mitarbeiterName: data.mitarbeiterName, mitarbeiterEmail: data.mitarbeiterEmail, mitarbeiterRolle: data.mitarbeiterRolle, organisationId: data.organisationId});
+
+    return res.sendStatus(HTTP.CREATED);
 });
 
 app.put("/mitarbeiter", async (req, res) => {
-    console.log("PUT /mitarbeiter; request-body: ");
-    data = req.body;
+    // update a mitarbeiter at specific mitarbeiterId
+    data = req.body; // the data sent by the client in request body
 
-    if(!data.ma_name || !data.ma_email || !data.ma_rolle) return res.status(400).send("NO");
+    if(!data.mitarbeiterName || !data.mitarbeiterEmail || !data.mitarbeiterRolle) return res.status(400).send("NO");
 
     await Mitarbeiter.update(
-        { ma_name: data.ma_name, ma_email: data.ma_email, ma_rolle: data.ma_rolle },
-        { where: { ma_id: data.ma_id } }
+        { mitarbeiterName: data.mitarbeiterName, mitarbeiterEmail: data.mitarbeiterEmail, mitarbeiterRolle: data.mitarbeiterRolle },
+        { where: { mitarbeiterId: data.mitarbeiterId } }
     ).then(result => {
-        return res.sendStatus(200);
+        return res.sendStatus(HTTP.CREATED);
     }).catch(result => {
-        return res.sendStatus(400);
+        return res.sendStatus(HTTP.ENTITY_NOT_FOUND);
     })
 });
 
-app.delete("/mitarbeiter/:ma_id", (req, res) => {    
-    console.log("DELETE /mitarbeiter; request-params: ");
-    Mitarbeiter.destroy({
-        where: {ma_id: req.params.ma_id}
-    })
-    return res.send("GET: Mitarbeiter");
+app.delete("/mitarbeiter/:mitarbeiterId", async (req, res)  => {    
+    // DELETE a mitarbeiter for specific mitarbeiterId
+    let success = await Mitarbeiter.destroy({
+        where: {mitarbeiterId: req.params.mitarbeiterId}
+    });
+
+    if (!success) return res.sendStatus(HTTP.ENTITY_NOT_FOUND);
+    return res.sendStatus(HTTP.OK);
 });
 
-app.get("/projekte/:org_id", async (req, res) => {
-    let org_id = req.params.org_id;
+app.get("/projekte/:organisationId", async (req, res) => {
+    // READ all projekte for specific organisationId
+    let organisationId = req.params.organisationId;
 
-    if (!org_id) return res.sendStatus(400);
+    if (!organisationId) return res.sendStatus(HTTP.BAD_REQUEST);
     
-    let projekte = await Projekt.findAll({where: { org_id: org_id }});
+    let projekte = await Projekt.findAll({
+        where: { organisationId: organisationId }, 
+        include: [Mitarbeiter, Umfrage]
+    });
 
     return res.send(projekte);
 });
 
 app.post("/projekt", async (req, res) => {
-    console.log("POST /projekt; request-body: ");
-    data = req.body;
+    data = req.body; // the data sent by the client in request body
 
-    if(!data.proj_name || !data.proj_descr || !data.proj_startDate || !data.proj_endDate || !data.teilnehmer) return res.status(400).send("NO");
-    console.log("inserting");
-    await Projekt.create(data);
+    if(!data.projektName || !data.projektBeschreibung || !data.projektStartDate || !data.projektEndDate || !data.teilnehmerIds || !data.umfragen) return res.status(400).send("NO");
+    const projekt = await Projekt.create(data);
 
-    return res.sendStatus(200);
+    // adding all teilnehmer to projekt
+    data.teilnehmerIds.forEach( async tId => {
+        // getting the teilnemer by the teilnehmerId from Mitarbeiter-Model and adding it the the projekt
+        const teilnehmer = await Mitarbeiter.findOne({
+            where: {mitarbeiterId: tId}
+        });
+        await projekt.addMitarbeiter(teilnehmer);
+    })
+
+    // adding umfragen to projekt
+    data.umfragen.forEach( async u => {
+        const umfrage = await Umfrage.create(u);
+        await projekt.addUmfrage(umfrage);
+    })
+
+    return res.sendStatus(HTTP.CREATED);
 });
 
+app.get("/projekt/:projektId", async(req, res) => {
+    try {
+        var projektId = req.params.projektId;
+    } catch (e) {
+        return res.sendStatus(HTTP.BAD_REQUEST);
+    }
+    
+    const result = await Projekt.findOne({
+        where: { projektId: projektId },
+        include: [Mitarbeiter, Umfrage]
+    });
 
+    if (!result) return res.sendStatus(HTTP.ENTITY_NOT_FOUND);
+    return res.send(result);
+})
 
-mysqldb
+app.get("/lsc/createSurvey", async (req, res) => {
+    let client = new LRPC();
+    await client.openConnection();
+    
+    console.log("Connection active:", client.connectionIsActive())
+
+    await client.closeConnection();
+
+    try {
+        const data = await fs.readFile(__dirname + '/../assets/limesurvey/base_survey.lss', { encoding: 'utf8' });
+        return res.sendStatus(HTTP.OK);
+    } catch (err) {
+        console.log(err);
+        return res.sendStatus(HTTP.INTERNAL_ERROR);
+    }
+})
+
+akcoredb
     .sync({ alter: true })
     .then(() => {
-        app.listen(port, () => {
-            console.log('listening to port localhost:' + port)
+        app.listen(PORT, async () => {
+             // creating an entry that already exists in the database will result in an error, so we want to catch that error
+            // this way, we only create that entries when the database is first initialized 
+            try { await Organisation.findOrCreate( { where: {organisationId: 1, organisationName: "LSWI-Lehrstuhl" } }); } catch (error) { console.log(error); }
+            try { await Organisation.findOrCreate( { where: {organisationId: 2, organisationName: "Marketing-Lehrstuhl" } }); } catch (error) { console.log(error); }
+            try { await Organisation.findOrCreate( { where: {organisationId: 3, organisationName: "Informatik-Lehrstuhl" } }); } catch (error) { console.log(error); }
+
+            console.log('listening to PORT localhost:' + PORT)
         })
     })
 
