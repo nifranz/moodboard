@@ -2,13 +2,10 @@ const fs = require('fs/promises')
 const express = require('express')
 const cors = require('cors')
 const bodyParser = require('body-parser')
-const {Sequelize, DataTypes, Model} = require('sequelize')
+const { Sequelize, DataTypes } = require('sequelize')
 const axios = require('axios')
-const { release } = require('os')
-try {
-    var connection = require('./connection')
-} catch (e) {
-    console.log('Missing "connection.js"-file in /src/connection. No connection established.')
+
+const connection = require('./connection')
     /* required ./connection.js' structure:
         const db_name = 'akcoredb';
         const db_username = '*****';
@@ -27,14 +24,16 @@ try {
             ls_password
         }
     */
-}
+
 
 const LIME_RPC_URL = 'http://localhost/index.php/admin/remotecontrol/';
-/*
-    @param id: rpc id
-    @param method: the rpc method to be used
-    @param params: the rpc params to send to the server
-*/
+
+/**
+ * Make a HTTP-POST request to the limesurvey rpc using axios HTTP library
+ * @param id: rpc id
+ * @param method: the rpc method to be used
+ * @param params: the rpc params to send to the server 
+ */
 async function lrpc_req(id, method, params) {
     const response = await axios.post(LIME_RPC_URL, {
         id: id,
@@ -44,63 +43,152 @@ async function lrpc_req(id, method, params) {
         headers: {
         'Content-Type': 'application/json',
         },
-    });       
+    });
     console.log("Response: ", response.data);
-    if (response.data.error) return response.data.error;
-    return response.data.result;
+    return response.data;
 }
 
-
+/**
+ * @class Class representing an interface to the LimeSurvey RPC API (documented as LRPC)
+ */
 class LRPC {
     #sessionKey;
     #activeConnection;
+     /** @constructs */
     constructor() {
-        this.sessionKey = "";
-        this.activeConnection = false;
+        this.#sessionKey = "";
+        this.#activeConnection = false;
     }
-
+    /** 
+     * Opens a connection to the LRPC, requesting a sessionKey 
+     * */
     async openConnection() {
         try {
-            if (this.activeConnection) {
+            if (this.#activeConnection) {
                 throw new Error("Connection already active");
             }
-            let data = await lrpc_req('test', 'get_session_key', [connection.ls_username, connection.ls_password]);
-            if (!data) return null;
-            this.sessionKey = data;
-            this.activeConnection = true;
+            let response = await lrpc_req('open_connection', 'get_session_key', [connection.ls_username, connection.ls_password]);
+            if (response.error) throw new Error(response.error);
+            this.#sessionKey = response.result;
+            this.#activeConnection = true;
             console.log("Connection to LimeSurvey RPC established!");
-            return 1;
         } catch (error) {
             console.log(error);
-            return 0;
         }
     }
-
+    /** 
+     * Closes the connection to the LRPC 
+     * */
     async closeConnection() {
         try {
-            if (!this.activeConnection) {
+            if (!this.#activeConnection) {
                 throw new Error("No active connection!");
             }
-            await lrpc_req('test','release_session_key', [this.sessionKey]);
-            this.sessionKey = "";   
-            this.activeConnection = false;
+            let response = await lrpc_req('close_connection','release_session_key', [this.#sessionKey]);
+            if (response.error) throw new Error(response.error);
+            this.#sessionKey = "";
+            this.#activeConnection = false;
             console.log("Connection to LimeSurvey RPC closed!");
         } catch (error) {
             console.log(error);
         }
     }
+    /** 
+     * Requests all surveys from the LRPC and prints the response to the console.
+     * */
+    async listSurveys() {
+        try {
+            if (!this.#activeConnection) {
+                throw new Error("No active connection! Establish a connection first by calling openConnection()!");
+            }
+            let data = await lrpc_req('list_surveys', 'list_surveys', [this.#sessionKey]);
+            if (data.error) throw new Error (data.error);
+            console.log(data.result);
+        } catch (error) {
+            console.log(error);
+        }        
+    }
 
-    getSurveys() {
-        
+    /** 
+     * Requests all users from the LRPC and prints the response to the console.
+     * */
+    async listUsers() {
+        try {
+            if (!this.#activeConnection) {
+                throw new Error("No active connection! Establish a connection first by calling openConnection()!");
+            }
+            let data = await lrpc_req('list_users', 'list_users', [this.#sessionKey]);
+            if (data.error) 
+            console.log(data.result);
+        } catch (error) {
+            console.log(error);
+        }        
+    }
+
+    /** 
+     * Requests all surveys from the LRPC and prints the response to the console.
+     * @param startDate The startDate of the survey
+     * @param stopDate The stopDate of the survey
+     * @returns {Promise} Promise object, represents the surveyId of the created survey
+     * */
+    async createSurvey(startDate, stopDate) {
+        return new Promise(async (resolve, reject)  => {
+            try {
+                if (!this.#activeConnection) {
+                    throw new Error("No active connection! Establish a connection first by calling openConnection()!");
+                }    
+
+                var surveyFile = await fs.readFile(__dirname + '/../assets/limesurvey/base_survey.lss', { encoding: 'base64' });
+                if(!surveyFile) throw new Error("Some error reading the file");
+    
+                let data = await lrpc_req('import_survey', 'import_survey', [this.#sessionKey, surveyFile, 'lss']);
+                if (data.error) throw new Error (data.error);
+                let surveyId = data.result;
+                console.log("Survey created! SurveyId: " + surveyId);
+                resolve(surveyId);
+             } catch(error) {
+                reject(error);
+             }
+        })
+    }
+
+    async activateTokens(surveyId, attributeData) {
+        try {
+            if (!this.#activeConnection) {
+                throw new Error("No active connection! Establish a connection first by calling openConnection()!");
+            }
+            let data = await lrpc_req('activate tokens, survey ' + surveyId, 'activate_tokens', [this.#sessionKey, surveyId, attributeData]);
+            if (data.error) throw new Error (data.error);
+            console.log("Participant added!");
+         } catch(error) {
+            console.error(error);
+         }
+    }
+
+    async addParticipants(surveyId, participantData) {
+        try {
+            if (!this.#activeConnection) {
+                throw new Error("No active connection! Establish a connection first by calling openConnection()!");
+            }
+
+            let data = await lrpc_req('add participant, survey ' + surveyId, 'add_participants', [this.#sessionKey, surveyId, participantData]);
+            if (data.error) throw new Error (data.error);
+            console.log("Participant added!");
+
+         } catch(error) {
+            console.error(error);
+         }
     }
 
     connectionIsActive () {
-        return this.activeConnection;
+        return this.#activeConnection;
+    }
+
+    getSessionKey () {
+        return this.#sessionKey;
     }
 }
 
-
-const SERVER_ROOTDIR = '/home/nifranz/dev/git/upgit-nifranz/akcore/akcoreapi/'
 
 const PORT = 3001;
 let app = express();
@@ -256,7 +344,28 @@ const Umfrage = akcoredb.define('umfrage', {
     timestamps: false
 });
 
-const ProjektTeilnahme = akcoredb.define('projektTeilnahme', { /* no fields given */}, {
+const ProjektTeilnahme = akcoredb.define('projektTeilnahme', {
+    projektId: {
+        type: DataTypes.INTEGER,
+        references: {
+            model: Projekt,
+            key: 'projektId'
+        }
+    },
+    mitarbeiterId: {
+        type: DataTypes.INTEGER,
+        references: {
+            model: Mitarbeiter,
+            key: 'mitarbeiterId'
+        }
+    },
+    mitarbeiterRolle:{
+        type: DataTypes.STRING
+    },
+    mitarbeiterAbteilung: {
+        type: DataTypes.STRING
+    }
+}, {
     timestamps: false
 });
 
@@ -269,8 +378,8 @@ Projekt.belongsTo(Organisation, {foreignKey: 'organisationId'});
 Projekt.hasMany(Umfrage, {foreignKey: 'projektId'});
 Umfrage.belongsTo(Projekt, {foreignKey: 'projektId'});
 
-Projekt.belongsToMany(Mitarbeiter, { through: 'projektTeilnahme', uniqueKey: false });
-Mitarbeiter.belongsToMany(Projekt, { through: 'projektTeilnahme', uniqueKey: false });
+Projekt.belongsToMany(Mitarbeiter, { through: ProjektTeilnahme });
+Mitarbeiter.belongsToMany(Projekt, { through: ProjektTeilnahme });
 
 // Mitarbeiter.belongsToMany(Projekt, { through: 'nimmtTeil' })
 
@@ -310,7 +419,7 @@ app.put("/mitarbeiter", async (req, res) => {
     // update a mitarbeiter at specific mitarbeiterId
     data = req.body; // the data sent by the client in request body
 
-    if(!data.mitarbeiterName || !data.mitarbeiterEmail || !data.mitarbeiterRolle) return res.status(400).send("NO");
+    if(!data.mitarbeiterName || !data.mitarbeiterEmail || !data.mitarbeiterRolle) return res.sendStatus(HTTP.BAD_REQUEST);
 
     await Mitarbeiter.update(
         { mitarbeiterName: data.mitarbeiterName, mitarbeiterEmail: data.mitarbeiterEmail, mitarbeiterRolle: data.mitarbeiterRolle },
@@ -347,27 +456,71 @@ app.get("/projekte/:organisationId", async (req, res) => {
 });
 
 app.post("/projekt", async (req, res) => {
-    data = req.body; // the data sent by the client in request body
+    try {
+        data = req.body; // the data sent by the client in request body
 
-    if(!data.projektName || !data.projektBeschreibung || !data.projektStartDate || !data.projektEndDate || !data.teilnehmerIds || !data.umfragen) return res.status(400).send("NO");
-    const projekt = await Projekt.create(data);
+        if (!data.projektName || 
+            !data.projektBeschreibung || 
+            !data.projektStartDate || 
+            !data.projektEndDate || 
+            !data.teilnehmerIds || 
+            !data.umfragen ||
+            !data.umfragen.umfrageStartDate ||
+            !data.umfragen.umfrageEndDate) {
+                return res.sendStatus(HTTP.BAD_REQUEST);
+        }
 
-    // adding all teilnehmer to projekt
-    data.teilnehmerIds.forEach( async tId => {
-        // getting the teilnemer by the teilnehmerId from Mitarbeiter-Model and adding it the the projekt
-        const teilnehmer = await Mitarbeiter.findOne({
-            where: {mitarbeiterId: tId}
-        });
-        await projekt.addMitarbeiter(teilnehmer);
-    })
+        const projekt = await Projekt.create(data);
 
-    // adding umfragen to projekt
-    data.umfragen.forEach( async u => {
-        const umfrage = await Umfrage.create(u);
-        await projekt.addUmfrage(umfrage);
-    })
+        // Opening a connection to LimeSurvey RPC
+        var client = new LRPC();
+        await client.openConnection();
 
-    return res.sendStatus(HTTP.CREATED);
+        var surveyIds = []; // array of created surveyIds
+        for (u of data.umfragen) {
+            await client.createSurvey(u.startDate, u.stopDate)
+            .then(async surveyId => {          
+                await client.activateTokens(surveyId, ["Rolle", "Abteilung"]);    
+                surveyIds.push(surveyId); 
+                u.umfrageLimesurveyId = surveyId;
+                let umfrage = await Umfrage.create(u);
+                await projekt.addUmfrage(umfrage);
+            }).catch(error => {
+                throw new Error(error);
+            });
+        }
+
+        var allTeilnehmer = [];
+        for (tId of data.teilnehmerIds) {
+            let teilnehmer = await Mitarbeiter.findOne({
+                where: {mitarbeiterId: tId}
+            });
+            for (sId of surveyIds) {
+                console.log("adding participant: ", teilnehmer);
+                await client.addParticipants(sId, [ {"lastname":teilnehmer.mitarbeiterName,"firstname":"TBD","email":teilnehmer.mitarbeiterEmail,"attribute_1":teilnehmer.mitarbeiterRolle, "attribute_2":"TBD"} ]);
+            }
+            await projekt.addMitarbeiter(teilnehmer);
+            allTeilnehmer.push(teilnehmer);
+        }
+        // data.teilnehmerIds.forEach( async tId => {
+        //     // getting the teilnemer by the teilnehmerId from Mitarbeiter-Model and adding it the the projekt
+        //     let teilnehmer = await Mitarbeiter.findOne({
+        //         where: {mitarbeiterId: tId}
+        //     });
+        //     await projekt.addMitarbeiter(teilnehmer);
+        //     allTeilnehmer.push(teilnehmer);
+        // });
+        return res.sendStatus(HTTP.CREATED); 
+    } 
+    catch (error) {
+        if (client) client.closeConnection();
+        console.log(error);
+        return res.sendStatus(HTTP.INTERNAL_ERROR);
+    } 
+    finally {
+        console.log("closing connection");
+        if (client) await client.closeConnection();
+    }
 });
 
 app.get("/projekt/:projektId", async(req, res) => {
@@ -386,20 +539,21 @@ app.get("/projekt/:projektId", async(req, res) => {
     return res.send(result);
 })
 
-app.get("/lsc/createSurvey", async (req, res) => {
+app.get("/lrpc/createSurvey", async (req, res) => {
     let client = new LRPC();
     await client.openConnection();
     
     console.log("Connection active:", client.connectionIsActive())
-
-    await client.closeConnection();
-
     try {
-        const data = await fs.readFile(__dirname + '/../assets/limesurvey/base_survey.lss', { encoding: 'utf8' });
+        // await client.listSurveys();
+        // await client.listUsers();
+        // await client.addParticipants('842869', [ {"lastname":"franz","firstname":"niklas","email":"nf.app@icloud.com","attribute_1":"user", "attribute_2":"1"} ]);
         return res.sendStatus(HTTP.OK);
     } catch (err) {
         console.log(err);
         return res.sendStatus(HTTP.INTERNAL_ERROR);
+    } finally {
+        await client.closeConnection();
     }
 })
 

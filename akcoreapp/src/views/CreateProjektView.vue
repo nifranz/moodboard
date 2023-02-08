@@ -84,8 +84,7 @@
                     <button class="btn btn-outline-primary" @click.prevent="selectAllTeiln">Alle auswählen</button>                
             </div>
         </div>
-        <button class="btn btn-primary" @click.prevent="createProjekt" type="submit">Projekt erstellen</button>
-        <button class="btn btn-outline-primary" @click.prevent="" type="submit">Projekt speichern</button>    
+        <button class="btn btn-primary" @click.prevent="createProjekt" type="submit">Projekt erstellen</button>  
     </form>
 </template>
 
@@ -127,6 +126,7 @@
                 projekt.teilnehmerIds = teilnehmerIds;
                 projekt.umfragen = this.umfragen;
                 try {
+                    this.loading = true;
                     await api.createProjekt(projekt);
                     window.location.href = '/projekte';
                 } catch (e) {
