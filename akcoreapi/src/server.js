@@ -292,12 +292,23 @@ const Mitarbeiter = akcoredb.define('mitarbeiter', {
     mitarbeiterEmail: {
         type: DataTypes.STRING
     },
-    mitarbeiterRolle: {
+}, {
+    timestamps: false
+});
+
+const Abteilung = akcoredb.define('abteilung', {
+    abteilungId: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true
+    },
+    abteilungName: {
         type: DataTypes.STRING
     }
 }, {
     timestamps: false
 });
+
 
 const Projekt = akcoredb.define('projekt', {
     projektId:{
@@ -345,41 +356,39 @@ const Umfrage = akcoredb.define('umfrage', {
 });
 
 const ProjektTeilnahme = akcoredb.define('projektTeilnahme', {
-    projektId: {
-        type: DataTypes.INTEGER,
-        references: {
-            model: Projekt,
-            key: 'projektId'
-        }
-    },
-    mitarbeiterId: {
-        type: DataTypes.INTEGER,
-        references: {
-            model: Mitarbeiter,
-            key: 'mitarbeiterId'
-        }
-    },
     mitarbeiterRolle:{
         type: DataTypes.STRING
     },
-    mitarbeiterAbteilung: {
-        type: DataTypes.STRING
-    }
 }, {
     timestamps: false
 });
 
+// Creating associations:
+// Organisation 1 :: n Mitarbeiter
 Organisation.hasMany(Mitarbeiter, {foreignKey: 'organisationId'});
 Mitarbeiter.belongsTo(Organisation, {foreignKey: 'organisationId'});
 
+// Organisation 1 :: n Abteilung
+Organisation.hasMany(Abteilung, {foreignKey: 'organisationId'});
+Abteilung.belongsTo(Organisation, {foreignKey: 'organisationId'});
+
+// Abteilung 1 :: n Mitarbeiter
+Abteilung.hasMany(Mitarbeiter, {foreignKey: 'abteilungId'});
+Mitarbeiter.belongsTo(Abteilung, {foreignKey: 'abteilungId'});
+
+// Organisation 1 :: n Projekt
 Organisation.hasMany(Projekt, {foreignKey: 'organisationId'});
 Projekt.belongsTo(Organisation, {foreignKey: 'organisationId'});
 
+// Projekt 1 :: n Umfrage
 Projekt.hasMany(Umfrage, {foreignKey: 'projektId'});
 Umfrage.belongsTo(Projekt, {foreignKey: 'projektId'});
 
+// Projekt m :: n Mitarbeiter
 Projekt.belongsToMany(Mitarbeiter, { through: ProjektTeilnahme });
 Mitarbeiter.belongsToMany(Projekt, { through: ProjektTeilnahme });
+
+
 
 // Mitarbeiter.belongsToMany(Projekt, { through: 'nimmtTeil' })
 
@@ -396,21 +405,27 @@ app.get("/organisations", async (req, res) => {
 });
 
 app.get("/mitarbeiterAll/:organisationId", async (req, res) => {
-    let organisationId= req.params.organisationId;
+    let organisationId = req.params.organisationId;
     if (!organisationId) return res.sendStatus(HTTP.BAD_REQUEST);
     if(!(await Organisation.findOne({where:{organisationId: organisationId}}))) return res.sendStatus(HTTP.ENTITY_NOT_FOUND);
 
     let mitarbeiter = await Mitarbeiter.findAll({where: { organisationId: organisationId}});
-
+    console.log(mitarbeiter);
     return res.send(mitarbeiter);
 });
 
 app.post("/mitarbeiter", async (req, res) => {
     data = req.body; // the data sent by the client in request body
+    console.log("incoming request: ", data);
 
-    if(!data.mitarbeiterName || !data.mitarbeiterEmail || !data.mitarbeiterRolle) return res.status(HTTP.BAD_REQUEST); 
+    if( !data.mitarbeiterName || !data.mitarbeiterEmail || !data.abteilungId) return res.sendStatus(HTTP.BAD_REQUEST); 
 
-    await Mitarbeiter.create({mitarbeiterName: data.mitarbeiterName, mitarbeiterEmail: data.mitarbeiterEmail, mitarbeiterRolle: data.mitarbeiterRolle, organisationId: data.organisationId});
+    await Mitarbeiter.create({ 
+        mitarbeiterName: data.mitarbeiterName, 
+        mitarbeiterEmail: data.mitarbeiterEmail, 
+        abteilungId: data.abteilungId, 
+        organisationId: data.organisationId
+    });
 
     return res.sendStatus(HTTP.CREATED);
 });
@@ -419,14 +434,17 @@ app.put("/mitarbeiter", async (req, res) => {
     // update a mitarbeiter at specific mitarbeiterId
     data = req.body; // the data sent by the client in request body
 
-    if(!data.mitarbeiterName || !data.mitarbeiterEmail || !data.mitarbeiterRolle) return res.sendStatus(HTTP.BAD_REQUEST);
+    if(!data.mitarbeiterName || !data.mitarbeiterEmail || !data.mitarbeiterAbteilung) return res.sendStatus(HTTP.BAD_REQUEST);
 
-    await Mitarbeiter.update(
-        { mitarbeiterName: data.mitarbeiterName, mitarbeiterEmail: data.mitarbeiterEmail, mitarbeiterRolle: data.mitarbeiterRolle },
-        { where: { mitarbeiterId: data.mitarbeiterId } }
-    ).then(result => {
+    await Mitarbeiter.update({ 
+        mitarbeiterName: data.mitarbeiterName, 
+        mitarbeiterEmail: data.mitarbeiterEmail, 
+        mitarbeiterAbteilung: data.mitarbeiterAbteilung 
+    }, { where: { mitarbeiterId: data.mitarbeiterId } })
+    .then(result => {
         return res.sendStatus(HTTP.CREATED);
-    }).catch(result => {
+    })
+    .catch(result => {
         return res.sendStatus(HTTP.ENTITY_NOT_FOUND);
     })
 });
@@ -539,6 +557,16 @@ app.get("/projekt/:projektId", async(req, res) => {
     return res.send(result);
 })
 
+app.get("/abteilungen/:organisationId", async(req, res) => {
+    let organisationId = req.params.organisationId;
+    if (!organisationId) return res.sendStatus(HTTP.BAD_REQUEST);
+    if(!(await Organisation.findOne({where:{organisationId: organisationId}}))) return res.sendStatus(HTTP.ENTITY_NOT_FOUND);
+
+    let abteilung = await Abteilung.findAll({where: { organisationId: organisationId }});
+
+    return res.send(abteilung);
+}) 
+
 app.get("/lrpc/createSurvey", async (req, res) => {
     let client = new LRPC();
     await client.openConnection();
@@ -566,6 +594,10 @@ akcoredb
             try { await Organisation.findOrCreate( { where: {organisationId: 1, organisationName: "LSWI-Lehrstuhl" } }); } catch (error) { console.log(error); }
             try { await Organisation.findOrCreate( { where: {organisationId: 2, organisationName: "Marketing-Lehrstuhl" } }); } catch (error) { console.log(error); }
             try { await Organisation.findOrCreate( { where: {organisationId: 3, organisationName: "Informatik-Lehrstuhl" } }); } catch (error) { console.log(error); }
+
+            try { await Abteilung.findOrCreate( { where: { abteilungId: 1, abteilungName: "Verkauf", organisationId: 1 }}); } catch (error) { console.log(error); }
+            try { await Abteilung.findOrCreate( { where: { abteilungId: 2, abteilungName: "Lager", organisationId: 1 }}); } catch (error) { console.log(error); }
+            try { await Abteilung.findOrCreate( { where: { abteilungId: 3, abteilungName: "Management", organisationId: 1 }}); } catch (error) { console.log(error); }
 
             console.log('listening to PORT localhost:' + PORT)
         })

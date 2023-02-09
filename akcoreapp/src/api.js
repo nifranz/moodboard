@@ -23,8 +23,12 @@ export default {
     getMitarbeiterAll (organisationId) {        
         return this.execute('get', `/mitarbeiterAll/${organisationId}`);
     },
+    getAbteilungen (organisationId) {        
+        return this.execute('get', `/abteilungen/${organisationId}`);
+    },
     createMitarbeiter (data) {
         console.log(data);
+        console.log("???")
         return this.execute('post', '/mitarbeiter', data);
     },
     updateMitarbeiter (data) {

@@ -8,23 +8,21 @@
           <div class="col">
             <div class="input-group mb-3">
               <span class="input-group-text">Name</span>
-              <input type="text" class="form-control" v-model="ma.mitarbeiterName" placeholder="Username" aria-label="Username" aria-describedby="basic-addon1" >
+              <input type="text" class="form-control" v-model="ma.mitarbeiterName" placeholder="Name">
             </div>
           </div>
           <div class="col">
             <div class="input-group mb-3">
               <span class="input-group-text">Email</span>
-              <input type="text" class="form-control" v-model="ma.mitarbeiterEmail" placeholder="Username" aria-label="Username" aria-describedby="basic-addon1">
+              <input type="text" class="form-control" v-model="ma.mitarbeiterEmail" placeholder="E-Mail">
             </div>
           </div>
           <div class="col-3">
             <div class="input-group mb-3">
-              <span class="input-group-text">Rolle</span>
-              <select class="form-control" v-model="ma.mitarbeiterRolle" aria-label="Default select example">
-                <option value="none">Bitte Rolle auswählen</option>
-                <option value="Key-User" v-bind:selected="ma.mitarbeiterRolle == 'Key-User'">Key-User</option>
-                <option value="User" v-bind:selected="ma.mitarbeiterRolle == 'User'">User</option>
-                <option value="Change-Manager" v-bind:selected="ma.mitarbeiterRolle == 'Change-Manager'">Change-Manager</option>
+              <span class="input-group-text">Abteilung</span>
+              <select class="form-control" v-model="ma.abteilungId">
+                <option value="null">Bitte Rolle auswählen</option>
+                <option v-for="abt in abteilungen" :key="abt" v-bind:value="abt.abteilungId">{{ abt.abteilungName }}</option>
               </select>
             </div>
           </div>
@@ -54,12 +52,10 @@
         </div>
         <div class="col-3">
           <div class="input-group mb-3">
-            <span class="input-group-text" id="basic-addon1">Rolle</span>
-            <select class="form-control" v-model="model.mitarbeiterRolle" aria-label="Default select example">
-              <option value=undefined>Bitte Rolle auswählen</option>
-              <option value="Key-User">Key-User</option>
-              <option value="User">User</option>
-              <option value="Change-Manager">Change-Manager</option>
+            <span class="input-group-text" id="basic-addon1">Abteilung</span>
+            <select class="form-control" v-model="model.abteilungId" aria-label="Default select example">
+              <option value=undefined>Bitte auswählen</option>
+              <option v-for="abt in abteilungen" :key="abt" v-bind:value="'' + abt.abteilungId">{{ abt.abteilungName }}</option>
             </select> 
           </div>
         </div>
@@ -86,21 +82,25 @@
         return{
             loading: false,
             mitarbeiter: [],
+            abteilungen: [],
             organisationId: sessionStorage.organisationId,
             model: {}
         }
     },
     async created () {
-      await this.refreshMitarbeiter();
+      await this.refreshData();
       console.log("sesh storg");
       console.log(sessionStorage.organisationId)
     },
     methods: {
-      async refreshMitarbeiter() {
+      async refreshData() {
         this.loading = true;
         this.mitarbeiter = await api.getMitarbeiterAll(this.organisationId);
+        this.abteilungen = await api.getAbteilungen(this.organisationId);
         console.log("Mitarbeiter:")
         console.log(this.mitarbeiter);
+        console.log("Abteilungen:")
+        console.log(this.abteilungen);
         this.loading = false;
       },
 
@@ -108,16 +108,17 @@
         var ma = this.model;
         ma.organisationId = this.organisationId;
 
+        this.loading = true;
         try {
           await api.createMitarbeiter(ma);
         } catch (e) {
           console.log(e);
           confirm(`Fehler: Mitarbeiter konnte nicht erstellt werden.`)
         }
+        this.loading = false;
 
         this.model = {};
-        await this.refreshMitarbeiter();
-        
+        await this.refreshData();
       },
 
       async editMitarbeiter(ma) {
@@ -130,7 +131,7 @@
           console.log(e);
           confirm(`Fehler: Mitarbeiter konnte nicht überarbeitet werden.`)
         }
-        await this.refreshMitarbeiter();
+        await this.refreshData();
       },
 
       async deleteMitarbeiter(ma) {
@@ -139,7 +140,7 @@
           console.log(`delete ma (id=${ma.mitarbeiterId})`)
 
           await api.deleteMitarbeiter(ma.mitarbeiterId);
-          await this.refreshMitarbeiter();
+          await this.refreshData();
         }
       }
     }

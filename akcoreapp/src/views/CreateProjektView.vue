@@ -58,29 +58,39 @@
             </div>
             <div class="card-body">
 
-                <div class="c-row d-flex flex-row">
+                <!-- <div class="c-row d-flex flex-row">
                     <div class="col-start">
                     </div>
                     <div class="col">
-                        <label for="basic-url"><h5>Name</h5></label>
+                        <label for="basic-url"><h6>Name</h6></label>
                     </div>
                     <div class="col">
-                        <label for="basic-url"><h5>E-Mail</h5></label>
+                        <label for="basic-url"><h6>E-Mail</h6></label>
                     </div>
                     <div class="col">
-                        <label for="basic-url"><h5>Rolle</h5></label>
+                        <label for="basic-url"><h6>Rolle</h6></label>
+                    </div>
+                </div> -->
+                <div v-for="abt in abteilungen" :key="abt">
+                    <label><h5>Abteilung {{ abt.abteilungName }}</h5></label>
+                    <div v-for="ma in mitarbeiter" :key="ma">
+                        <div class="input-group mb-2" v-if="ma.abteilungId == abt.abteilungId">                 
+                            <span class="input-group-text" id="basic-addon1">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" v-model="ma.include" data-group="teilnehmer" value="">
+                                </div>
+                            </span>
+                            <span type="text" class="form-control overflow-hidden">{{ ma.mitarbeiterName }}</span>          
+                            <span type="text" class="form-control overflow-hidden">{{ ma.mitarbeiterEmail }}</span>
+                            <select class="form-control" v-model="ma.mitarbeiterRolle">
+                                <option value=undefined selected>Bitte Rolle auswählen</option>
+                                <option value="Key-User">Key-User</option>
+                                <option value="User">User</option>
+                                <option value="Change-Manager">Change-Manager</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
-                <div class="input-group mb-2" v-for="ma in mitarbeiter" :key="ma">                    
-                    <span class="input-group-text" id="basic-addon1">
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" v-model="ma.include" data-group="teilnehmer" value="">
-                        </div>
-                    </span>
-                    <span type="text" class="form-control overflow-hidden">{{ ma.mitarbeiterName }}</span>          
-                    <span type="text" class="form-control overflow-hidden">{{ ma.mitarbeiterEmail }}</span>
-                    <span type="text" class="form-control overflow-hidden">{{ ma.mitarbeiterRolle }}</span>               
-                </div>                
                     <button class="btn btn-outline-primary" @click.prevent="selectAllTeiln">Alle auswählen</button>                
             </div>
         </div>
@@ -101,6 +111,7 @@
                 loading: false,
                 organisationId: sessionStorage.organisationId,
                 mitarbeiter: [],
+                abteilungen: [],
                 model: {},
                 umfragen: []
             }
@@ -108,12 +119,13 @@
         async created () {
             console.log("sesh storg");
             console.log(sessionStorage.organisationId);
-            await this.refreshProjekt();            
+            await this.refreshData();            
         },
         methods: {
-            async refreshProjekt() {
+            async refreshData() {
                 this.loading = true;
                 this.mitarbeiter = await api.getMitarbeiterAll(this.organisationId);
+                this.abteilungen = await api.getAbteilungen(this.organisationId);
                 this.loading = false;
             },
             async createProjekt() {
