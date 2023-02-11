@@ -56,7 +56,7 @@
             </div>
           </li>
         </ul>
-        <router-link v-bind:to="'/projekte/' + proj.projektId" class="footer-btn btn btn-primary">Projekt öffnen</router-link>
+        <router-link v-bind:to="'/projekt/' + proj.projektId" class="footer-btn btn btn-primary">Projekt öffnen</router-link>
 
       </div>     
     </div>

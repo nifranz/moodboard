@@ -39,7 +39,7 @@ const routes = [
     component: CreateProjektView
   },
   {
-    path: '/projekte/:projektId',
+    path: '/projekt/:projektId',
     name: 'ProjektView',
     component: ProjektView,
     props: true

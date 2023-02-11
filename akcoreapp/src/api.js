@@ -12,42 +12,53 @@ export default {
             url: resource,
             data
         }).then(req => {
-            return req.data;
+            return req;
         });
     },
     // ORGANISATION API
-    getOrganisations() {
-        return this.execute('get', '/organisations')
-    },    
+    async getOrganisations() {
+        let response = await this.execute('get', '/organisations');
+        return response.data;
+    },
     // MITARBEITER API
-    getMitarbeiterAll (organisationId) {        
-        return this.execute('get', `/mitarbeiterAll/${organisationId}`);
+    async getMitarbeiterAll (organisationId) {        
+        let response = await this.execute('get', `/mitarbeiterAll/${organisationId}`);
+        console.log(response)
+        return response.data;
     },
-    getAbteilungen (organisationId) {        
-        return this.execute('get', `/abteilungen/${organisationId}`);
+    async getAbteilungen (organisationId) {        
+        let response = await this.execute('get', `/abteilungen/${organisationId}`);
+        return response.data;
     },
-    createMitarbeiter (data) {
+    async createMitarbeiter (data) {
         console.log(data);
         console.log("???")
-        return this.execute('post', '/mitarbeiter', data);
+        let response = await this.execute('post', '/mitarbeiter', data);
+        return response.data;
     },
-    updateMitarbeiter (data) {
-        return this.execute('put', '/mitarbeiter', data);
+    async updateMitarbeiter (data) {
+        let response = await this.execute('put', '/mitarbeiter', data);
+        return response.data;
 
     },
-    deleteMitarbeiter (mitarbeiterId) {
-        return this.execute('delete', `/mitarbeiter/${mitarbeiterId}`);
+    async deleteMitarbeiter (mitarbeiterId) {
+        let response = await this.execute('delete', `/mitarbeiter/${mitarbeiterId}`);
+        return response.data;
     },
     // PROJEKTE API
-    getProjekte (organisationId) {        
-        return this.execute('get', `/projekte/${organisationId}`);
+    async getProjekte (organisationId) {        
+        let response = await this.execute('get', `/projekte/${organisationId}`);
+        return response.data;
     },
-    getProjekt (projektId) {
-        return this.execute('get', `/projekt/${projektId}`);
+    async getProjekt (projektId) {
+        let response = await this.execute('get', `/projekt/${projektId}`);
+        return response.data;
     },
-    createProjekt (data) {
+    async createProjekt (data) {
         console.log(data);
-        return this.execute('post', '/projekt', data);
+        let response = await this.execute('post', '/projekt', data);
+        console.log(response);
+        return response;
     },
 }
   

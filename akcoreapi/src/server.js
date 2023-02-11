@@ -502,7 +502,10 @@ app.post("/projekt", async (req, res) => {
             }
         }
         console.log("returning HTTP.CREATED");
-        return res.sendStatus(HTTP.CREATED); 
+        return res // the response
+            .setHeader('Location', `/projekt/${projekt.projektId}`) // setting location header for the response to the client
+            .set( { 'Access-Control-Expose-Headers': 'location', } )
+            .send(HTTP.CREATED);
     } 
     catch (error) {
         if (client) client.closeConnection();
