@@ -2,7 +2,7 @@
   <h2>Projekte</h2>
   <LoadingComponent v-if="loading" loading=loading />
   <div class="mt-4 mb-4">
-    <router-link v-if="!loading" to="/projekte/createNew" class="btn btn-outline-success">Neues Projekt erstellen</router-link>
+    <router-link v-if="!loading" to="/projekte/new" class="btn btn-outline-success">Neues Projekt erstellen</router-link>
     <div class="card-container mt-4">
       <div class="card projekt" v-for="proj in projekte" :key="proj">
         <div class="card-header">

@@ -5,6 +5,7 @@ import ProjekteView from "../views/ProjekteView"
 import PageNotFound from "@/views/PageNotFound"
 import CreateProjektView from "@/views/CreateProjektView"
 import ProjektView from "@/views/ProjektView"
+import EditProjektView from "@/views/EditProjektView"
 
 
 const routes = [
@@ -34,7 +35,7 @@ const routes = [
     component: PageNotFound
   },
   {
-    path: '/projekte/createNew',
+    path: '/projekte/new',
     name: 'CreateProjektView',
     component: CreateProjektView
   },
@@ -42,6 +43,12 @@ const routes = [
     path: '/projekt/:projektId',
     name: 'ProjektView',
     component: ProjektView,
+    props: true
+  },
+  {
+    path: '/projekt/:projektId/edit',
+    name: 'EditProjektView',
+    component: EditProjektView,
     props: true
   }
 ]

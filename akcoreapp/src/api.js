@@ -54,11 +54,20 @@ export default {
         let response = await this.execute('get', `/projekt/${projektId}`);
         return response.data;
     },
+    /** 
+     * @returns A relative Location-URI for the created projekt
+     */
     async createProjekt (data) {
         console.log(data);
         let response = await this.execute('post', '/projekt', data);
         console.log(response);
-        return response;
+        return response.headers.location;
+    },
+    async updateProjekt (data, projektId) {
+        console.log(data);
+        let response = await this.execute('put', `/projekt/${projektId}`, data);
+        console.log(response);
+        return response.headers.location;
     },
 }
   

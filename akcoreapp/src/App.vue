@@ -38,9 +38,9 @@
       </div>
     </div>
   </nav>
-  <div class = "container">
-    <routerView />
-  </div>
+    <div class="container">
+      <routerView />
+    </div>
 </template>
 
 <script>
@@ -92,5 +92,9 @@ nav a {
 
 nav a.router-link-exact-active {
   color: #42b983;
+}
+
+.flex-1 {
+  flex:1;
 }
 </style>

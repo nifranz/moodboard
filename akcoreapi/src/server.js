@@ -436,6 +436,7 @@ app.get("/projekte/:organisationId", async (req, res) => {
 });
 
 app.post("/projekt", async (req, res) => {
+    let client;
     try {
         data = req.body; // the data sent by the client in request body
 
@@ -452,7 +453,7 @@ app.post("/projekt", async (req, res) => {
         var projekt = await Projekt.create(data);
 
         // Opening a connection to LimeSurvey RPC
-        var client = new LRPC();
+        client = new LRPC();
         await client.openConnection();
 
         var surveyIds = []; // array of created surveyIds
@@ -477,16 +478,15 @@ app.post("/projekt", async (req, res) => {
                 include: [Abteilung]
             });
             await projekt.addMitarbeiter(teilnehmer, { through: { mitarbeiterRolle: teiln.mitarbeiterRolle } });
-            
-            projekt = await Projekt.findOne({
-                where: {projektId: projekt.projektId},
-                include: { 
-                    model: Mitarbeiter, 
-                    include: [Abteilung]
-                }
-            });
-            projektTeilnehmer = projekt.mitarbeiters;
         }
+        projekt = await Projekt.findOne({
+            where: {projektId: projekt.projektId},
+            include: { 
+                model: Mitarbeiter, 
+                include: [Abteilung]
+            }
+        });
+        projektTeilnehmer = projekt.mitarbeiters;
 
         // adding participants to survey in limesurvey
         for (let teilnehmer of projektTeilnehmer) {
@@ -510,6 +510,133 @@ app.post("/projekt", async (req, res) => {
     catch (error) {
         if (client) client.closeConnection();
         console.log(error);
+        return res.sendStatus(HTTP.INTERNAL_ERROR);
+    } 
+    finally {
+        if (client) await client.closeConnection();
+    }
+});
+
+app.put("/projekt/:projektId", async (req, res) => {
+    let client;
+    try {        
+        data = req.body; // the data sent by the client in request body
+
+        if (!data.projektName || 
+            !data.projektBeschreibung || 
+            !data.projektStartDate || 
+            !data.projektEndDate || 
+            !data.teilnehmer || 
+            !data.umfragen ) {
+                console.log("bad request")
+                return res.sendStatus(HTTP.BAD_REQUEST);
+        }
+    
+        var projekt = await Projekt.findOne({where: {projektId: req.params.projektId}});
+        if (!projekt) return res.send(HTTP.ENTITY_NOT_FOUND);
+        // update projekt meta-data
+        projekt.set({
+            projektName: data.projektName,
+            projektBeschreibung: data.projektBeschreibung,
+            projektStartDate: data.projektStartDate,
+            projektEndDate: data.projektEndDate,
+        })
+        await projekt.save()
+
+        data.teilnehmerNew = data.teilnehmer.filter(teiln => {
+            return teiln.new;
+        });
+
+        data.umfragenNew = data.umfragen.filter(umfr => {
+            return !umfr.readOnly;
+        });
+
+        // Opening a connection to LimeSurvey RPC
+        client = new LRPC();
+        await client.openConnection();
+
+        // creating an array presentSurveyIds that contains all surveyIds of all surveys that existed in the Projekt before updating it.
+        var presentUmfragen = await Umfrage.findAll({
+            where: {projektId: projekt.projektId},
+        });
+        let presentSurveyIds = [];
+        for (umfr of presentUmfragen) {
+            presentSurveyIds.push(umfr.umfrageLimesurveyId);
+        }
+        console.log("Present surveyIds:",presentSurveyIds);
+
+        var newSurveyIds = []; // array of newly created surveyIds
+        for (u of data.umfragenNew) {
+            await client.createSurvey(u.startDate, u.stopDate)
+            .then( async surveyId => {          
+                await client.activateTokens(surveyId, [1,2]);    
+                newSurveyIds.push(surveyId); 
+                u.umfrageLimesurveyId = surveyId;
+                let umfrage = await Umfrage.create(u);
+                await projekt.addUmfrage(umfrage);
+            }).catch(error => {
+                throw new Error(error);
+            });
+        }
+
+        let newTeilnehmerMitarbeiterIds = []; // array that will contain the mitarbeiterIds of all new teilnehmers; for later use
+        for (teiln of data.teilnehmerNew) {
+            newTeilnehmerMitarbeiterIds.push(teiln.mitarbeiterId);
+            console.log("Teilnehmer-Data:", teiln);
+            let teilnId = teiln.mitarbeiterId;
+            let teilnehmer = await Mitarbeiter.findOne({
+                where: {mitarbeiterId: teilnId},
+                include: [Abteilung]
+            });
+            await projekt.addMitarbeiter(teilnehmer, { through: { mitarbeiterRolle: teiln.mitarbeiterRolle } });
+        }
+
+        let allProjektTeilnehmer = [];
+        projekt = await Projekt.findOne({
+            where: {projektId: projekt.projektId},
+            include: { 
+                model: Mitarbeiter, 
+                include: [Abteilung]
+            }
+        });
+        allProjektTeilnehmer = projekt.mitarbeiters;
+
+        // adding participants to new surveys in limesurvey
+        for (let teilnehmer of allProjektTeilnehmer) {
+            for (sId of newSurveyIds) {
+                // adding participant to limesurvey
+                let limesurveyTokenId = await client.addParticipants(sId, [ {"lastname":teilnehmer.mitarbeiterName,"firstname":"TBD","email":teilnehmer.mitarbeiterEmail,"attribute_1":teilnehmer.projektTeilnahme.mitarbeiterRolle, "attribute_2":teilnehmer.abteilung.abteilungName} ]);
+                console.log("tokenid: ", limesurveyTokenId);
+                // writing the limesurveyTokenId to database
+                ProjektTeilnahme.update(
+                    { limesurveyTokenId: limesurveyTokenId }, 
+                    { where: { mitarbeiterMitarbeiterId: teilnehmer.mitarbeiterId, projektProjektId: projekt.projektId } }
+                );
+            }
+            // for surveys that existed before the update we add only new participants since the old ones already have been created for these surveys.
+            if (newTeilnehmerMitarbeiterIds.includes(teilnehmer.mitarbeiterId))  {
+                // if the mitarbeiterId of current teilnehmer is included in newTeilnehmerMitarbeiterIds -> add to all presentSurveys
+                for (sId of presentSurveyIds) {
+                    // adding participant to limesurvey
+                    let limesurveyTokenId = await client.addParticipants(sId, [ {"lastname":teilnehmer.mitarbeiterName,"firstname":"TBD","email":teilnehmer.mitarbeiterEmail,"attribute_1":teilnehmer.projektTeilnahme.mitarbeiterRolle, "attribute_2":teilnehmer.abteilung.abteilungName} ]);
+                    console.log("tokenid: ", limesurveyTokenId);
+                    // writing the limesurveyTokenId to database
+                    ProjektTeilnahme.update(
+                        { limesurveyTokenId: limesurveyTokenId }, 
+                        { where: { mitarbeiterMitarbeiterId: teilnehmer.mitarbeiterId, projektProjektId: projekt.projektId } }
+                    );
+                }
+            }
+        }
+        console.log("returning HTTP.CREATED");
+        return res // the response
+            .setHeader('Location', `/projekt/${projekt.projektId}`) // setting location header for the response to the client
+            .set( { 'Access-Control-Expose-Headers': 'location', } )
+            .sendStatus(HTTP.CREATED);
+    } 
+    catch (error) {
+        if (client) client.closeConnection();
+        console.error(error);
         return res.sendStatus(HTTP.INTERNAL_ERROR);
     } 
     finally {

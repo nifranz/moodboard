@@ -12,11 +12,11 @@
         <div class ="d-flex">
             <div class="input-group">
                 <span class="input-group-text">Projekt-Start</span>
-                <div class="form-control" type="date">{{projekt.projektStartDate}}</div>
+                <div class="form-control" >{{projekt.projektStartDate}}</div>
             </div>
             <div class="input-group">
                 <span class="input-group-text">Projekt-Ende</span>
-                <div class="form-control" type="date">{{projekt.projektEndDate}}</div>
+                <div class="form-control" >{{projekt.projektEndDate}}</div>
             </div>
         </div>
         <div class="card">
@@ -30,11 +30,11 @@
                         <div class="d-flex">                    
                             <div class="input-group">
                                 <span class="input-group-text" id="basic-addon1">Start</span>
-                                <input class="form-control" type="date" v-model="umfr.umfrageStartDate">
+                                <div class="form-control" >{{umfr.umfrageStartDate}}</div>
                             </div>
                             <div class="input-group">
                                 <span class="input-group-text" id="basic-addon1">Ende</span>
-                                <input class="form-control" type="date" v-model="umfr.umfrageEndDate">
+                                <div class="form-control" >{{umfr.umfrageEndDate}}</div>
                             </div>
                             <div class="input-group">
                                 <span class="input-group-text" id="basic-addon1">Fragebogen</span>
@@ -73,7 +73,10 @@
                 </div>                              
             </div>
         </div>
-   
+        <div class="d-flex flex-row">
+            <router-link :to="'/projekt/' + projekt.projektId + '/edit'" class="btn btn-secondary flex-1">Projekt bearbeiten</router-link>
+            <button class="btn btn-outline-danger flex-1" @click.prevent="cancel" type="submit">Projekt löschen</button>
+        </div>   
     </form>
 </template>
 
@@ -81,7 +84,7 @@
     import api from '@/api'
     import LoadingComponent from "@/components/LoadingComponent.vue"
     export default {
-        name: "CreateProjektView.vue",
+        name: "ProjektView.vue",
         props: {
             projektId: String
         },
