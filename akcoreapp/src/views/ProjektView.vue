@@ -66,10 +66,10 @@
                         <label for="basic-url"><h5>Rolle</h5></label>
                     </div>
                 </div>
-                <div class="input-group mb-2" v-for="ma in projekt.mitarbeiters" :key="ma">                    
-                    <span type="text" class="form-control overflow-hidden">{{ ma.mitarbeiterName }}</span>          
-                    <span type="text" class="form-control overflow-hidden">{{ ma.mitarbeiterEmail }}</span>
-                    <span type="text" class="form-control overflow-hidden">{{ ma.mitarbeiterRolle }}</span>               
+                <div class="input-group mb-2" v-for="teiln in projekt.mitarbeiters" :key="teiln">                    
+                    <span type="text" class="form-control overflow-hidden">{{ teiln.mitarbeiterName }}</span>          
+                    <span type="text" class="form-control overflow-hidden">{{ teiln.mitarbeiterEmail }}</span>
+                    <span type="text" class="form-control overflow-hidden">{{ teiln.projektTeilnahme.mitarbeiterRolle }}</span>               
                 </div>                              
             </div>
         </div>

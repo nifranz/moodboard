@@ -36,7 +36,7 @@
           <div class="input-group mb-2" v-for="teiln in proj.mitarbeiters" :key="teiln">
             <span type="text" class="form-control d-flex align-items-center">{{ teiln.mitarbeiterName }}</span>          
             <span type="text" class="form-control d-flex align-items-center">{{ teiln.mitarbeiterEmail }}</span>
-            <span type="text" class="form-control d-flex align-items-center">{{ teiln.mitarbeiterRolle }}</span> 
+            <span type="text" class="form-control d-flex align-items-center">{{ teiln.projektTeilnahme.mitarbeiterRolle }}</span> 
           </div>          
         </section>
         <ul class="list-group list-group-flush">
