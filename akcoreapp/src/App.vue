@@ -62,7 +62,7 @@
       }
     },
     mounted() {
-      this.$store.commit('initializeStore'); 
+      this.$store.commit('initializeStore');
     }
   }
   // set default organisation
