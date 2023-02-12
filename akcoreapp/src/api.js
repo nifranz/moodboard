@@ -21,12 +21,14 @@ export default {
         return response.data;
     },
     // MITARBEITER API
-    async getMitarbeiterAll (organisationId) {        
+    async getMitarbeiterAll (organisationId) {       
+        console.log("API: executing getMitarbeiterAll()") 
         let response = await this.execute('get', `/mitarbeiterAll/${organisationId}`);
         console.log(response)
         return response.data;
     },
-    async getAbteilungen (organisationId) {        
+    async getAbteilungen (organisationId) {
+        console.log("API: executing getMitarbeiterAll()")      
         let response = await this.execute('get', `/abteilungen/${organisationId}`);
         return response.data;
     },
@@ -69,5 +71,9 @@ export default {
         console.log(response);
         return response.headers.location;
     },
+    async deleteProjekt(projektId) {
+        let response = await this.execute('delete', `/projekt/${projektId}`);
+        return response.data;
+    }
 }
   

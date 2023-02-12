@@ -75,7 +75,7 @@
         </div>
         <div class="d-flex flex-row">
             <router-link :to="'/projekt/' + projekt.projektId + '/edit'" class="btn btn-secondary flex-1">Projekt bearbeiten</router-link>
-            <button class="btn btn-outline-danger flex-1" @click.prevent="cancel" type="submit">Projekt löschen</button>
+            <button class="btn btn-outline-danger flex-1" @click.prevent="deleteProjekt" type="submit">Projekt löschen</button>
         </div>   
     </form>
 </template>
@@ -132,6 +132,13 @@
                 
                 this.model= {};
                 // window.location.href = '/projekte';
+            },
+            async deleteProjekt() {
+                if (confirm('Sind Sie sicher? Alle Umfragen und die zugehörigen Antworten werden gelöscht. Diese Aktion kann nicht Rückgängig gemacht werden.')) {
+                    this.loading = true;
+                    await api.deleteProjekt(this.projekt.projektId);
+                    window.location.href = '/projekte'
+                }
             },
             async selectAllTeiln() {
                 this.mitarbeiter.forEach(ma => {

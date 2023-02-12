@@ -56,7 +56,13 @@
     methods: {
       updateOrganisationName(organisationName) {
         this.organisationName = organisationName;
+      },
+      logout(){
+        this.$store.commit('logout');
       }
+    },
+    mounted() {
+      this.$store.commit('initializeStore'); 
     }
   }
   // set default organisation

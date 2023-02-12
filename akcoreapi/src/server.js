@@ -66,7 +66,8 @@ class LRPC {
     async openConnection() {
         try {
             if (this.#activeConnection) {
-                throw new Error("Connection already active");
+                console.error("Connection already active");
+                return
             }
             let response = await lrpc_req('open_connection', 'get_session_key', [connection.ls_username, connection.ls_password]);
             if (response.error) throw new Error(response.error);
@@ -83,7 +84,8 @@ class LRPC {
     async closeConnection() {
         try {
             if (!this.#activeConnection) {
-                throw new Error("No active connection!");
+                console.error("No active connection!");
+                return 
             }
             let response = await lrpc_req('close_connection','release_session_key', [this.#sessionKey]);
             if (response.error) throw new Error(response.error);
@@ -178,6 +180,21 @@ class LRPC {
             if (data.error) throw new Error (data.error);
             console.log(participantData.length, "participant(s) added for survey", surveyId);
             return (data.result[0].token);
+         } catch(error) {
+            console.error("Participant could not be added for survey ", surveyId);
+            throw new Error(error);
+         }
+    }
+
+    async deleteSurvey(surveyId) {
+        try {
+            if (!this.#activeConnection) {
+                throw new Error("No active connection! Establish a connection first by calling openConnection()!");
+            }
+
+            let response = await lrpc_req('delete survey, survey ' + surveyId, 'delete_survey', [this.#sessionKey, surveyId]);
+            if (response.error) throw new Error (response.error);
+            return (response.result);
          } catch(error) {
             console.error("Participant could not be added for survey ", surveyId);
             throw new Error(error);
@@ -363,11 +380,13 @@ Mitarbeiter.belongsToMany(Projekt, { through: ProjektTeilnahme });
 // D for Delete: HTTP DELETE
 
 app.get("/organisations", async (req, res) => {
+    console.log("GET /organisations");
     let organisations = await Organisation.findAll();
     return res.send(organisations);
 });
 
 app.get("/mitarbeiterAll/:organisationId", async (req, res) => {
+    console.log("GET /mitarbeiterAll/"+req.params.organisationId);
     let organisationId = req.params.organisationId;
     if (!organisationId) return res.sendStatus(HTTP.BAD_REQUEST);
     if(!(await Organisation.findOne({where:{organisationId: organisationId}}))) return res.sendStatus(HTTP.ENTITY_NOT_FOUND);
@@ -377,6 +396,7 @@ app.get("/mitarbeiterAll/:organisationId", async (req, res) => {
 });
 
 app.post("/mitarbeiter", async (req, res) => {
+    console.log("POST /mitarbeiter");
     data = req.body; // the data sent by the client in request body
     console.log("incoming request: ", data);
 
@@ -393,6 +413,7 @@ app.post("/mitarbeiter", async (req, res) => {
 });
 
 app.put("/mitarbeiter", async (req, res) => {
+    console.log("PUT /mitarbeiter");
     // update a mitarbeiter at specific mitarbeiterId
     data = req.body; // the data sent by the client in request body
 
@@ -412,6 +433,7 @@ app.put("/mitarbeiter", async (req, res) => {
 });
 
 app.delete("/mitarbeiter/:mitarbeiterId", async (req, res)  => {    
+    console.log("DELETE /mitarbeiter");
     // DELETE a mitarbeiter for specific mitarbeiterId
     let success = await Mitarbeiter.destroy({
         where: {mitarbeiterId: req.params.mitarbeiterId}
@@ -422,6 +444,7 @@ app.delete("/mitarbeiter/:mitarbeiterId", async (req, res)  => {
 });
 
 app.get("/projekte/:organisationId", async (req, res) => {
+    console.log("GET /projekte/"+req.params.organisationId);
     // READ all projekte for specific organisationId
     let organisationId = req.params.organisationId;
 
@@ -434,6 +457,32 @@ app.get("/projekte/:organisationId", async (req, res) => {
 
     return res.send(projekte);
 });
+
+app.get("/projekt/:projektId", async(req, res) => {
+    try {
+        var projektId = req.params.projektId;
+    } catch (e) {
+        return res.sendStatus(HTTP.BAD_REQUEST);
+    }
+
+    const result = await Projekt.findOne({
+        where: {projektId: projektId},
+        include: [{ 
+            model: Mitarbeiter, 
+            include: [Abteilung]
+        }, {
+            model: Umfrage
+        }]
+    });
+    
+    // const result = await Projekt.findOne({
+    //     where: { projektId: projektId },
+    //     include: [Mitarbeiter, Umfrage]
+    // });
+
+    if (!result) return res.sendStatus(HTTP.ENTITY_NOT_FOUND);
+    return res.send(result);
+})
 
 app.post("/projekt", async (req, res) => {
     let client;
@@ -505,10 +554,9 @@ app.post("/projekt", async (req, res) => {
         return res // the response
             .setHeader('Location', `/projekt/${projekt.projektId}`) // setting location header for the response to the client
             .set( { 'Access-Control-Expose-Headers': 'location', } )
-            .send(HTTP.CREATED);
+            .sendStatus(HTTP.CREATED);
     } 
     catch (error) {
-        if (client) client.closeConnection();
         console.log(error);
         return res.sendStatus(HTTP.INTERNAL_ERROR);
     } 
@@ -533,7 +581,7 @@ app.put("/projekt/:projektId", async (req, res) => {
         }
     
         var projekt = await Projekt.findOne({where: {projektId: req.params.projektId}});
-        if (!projekt) return res.send(HTTP.ENTITY_NOT_FOUND);
+        if (!projekt) return res.sendStatus(HTTP.ENTITY_NOT_FOUND);
         // update projekt meta-data
         projekt.set({
             projektName: data.projektName,
@@ -635,7 +683,6 @@ app.put("/projekt/:projektId", async (req, res) => {
             .sendStatus(HTTP.CREATED);
     } 
     catch (error) {
-        if (client) client.closeConnection();
         console.error(error);
         return res.sendStatus(HTTP.INTERNAL_ERROR);
     } 
@@ -644,33 +691,34 @@ app.put("/projekt/:projektId", async (req, res) => {
     }
 });
 
-app.get("/projekt/:projektId", async(req, res) => {
+app.delete('/projekt/:projektId', async(req,res) => {
+    let client;
     try {
-        var projektId = req.params.projektId;
-    } catch (e) {
-        return res.sendStatus(HTTP.BAD_REQUEST);
-    }
-
-    const result = await Projekt.findOne({
-        where: {projektId: projektId},
-        include: [{ 
-            model: Mitarbeiter, 
-            include: [Abteilung]
-        }, {
-            model: Umfrage
-        }]
-    });
+        let projekt = await Projekt.findOne({where: {projektId: req.params.projektId},include: [Umfrage]});
+        if (!projekt) return res.sendStatus(HTTP.ENTITY_NOT_FOUND);
+        var projektUmfragen = projekt.umfrages;
     
-    // const result = await Projekt.findOne({
-    //     where: { projektId: projektId },
-    //     include: [Mitarbeiter, Umfrage]
-    // });
+        client = new LRPC();
+        await client.openConnection();
+    
+        for (umfr of projektUmfragen) {
+            await client.deleteSurvey(umfr.umfrageLimesurveyId);
+        }
 
-    if (!result) return res.sendStatus(HTTP.ENTITY_NOT_FOUND);
-    return res.send(result);
-})
+        await projekt.destroy();
+        return res.sendStatus(HTTP.OK);
+    } catch (error) {
+        console.error(error);
+        return res.sendStatus(HTTP.INTERNAL_ERROR);
+    } finally {
+        if (client) client.closeConnection();
+    }
+});
+
+
 
 app.get("/abteilungen/:organisationId", async(req, res) => {
+    console.log("GET /abteilungen/"+req.params.organisationId);
     let organisationId = req.params.organisationId;
     if (!organisationId) return res.sendStatus(HTTP.BAD_REQUEST);
     if(!(await Organisation.findOne({where:{organisationId: organisationId}}))) return res.sendStatus(HTTP.ENTITY_NOT_FOUND);

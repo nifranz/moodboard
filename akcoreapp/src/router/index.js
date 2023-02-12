@@ -6,9 +6,15 @@ import PageNotFound from "@/views/PageNotFound"
 import CreateProjektView from "@/views/CreateProjektView"
 import ProjektView from "@/views/ProjektView"
 import EditProjektView from "@/views/EditProjektView"
+import LoginView from "@/views/LoginView.vue"
 
 
 const routes = [
+  {
+    path: '/:patchMatch(.*)*',
+    name: 'PageNotFound',
+    component: PageNotFound
+  },
   {
     path: '/',
     name: 'home',
@@ -30,12 +36,7 @@ const routes = [
     component: ProjekteView
   },
   {
-    path: '/:patchMatch(.*)*',
-    name: 'PageNotFound',
-    component: PageNotFound
-  },
-  {
-    path: '/projekte/new',
+    path: '/projekt/new',
     name: 'CreateProjektView',
     component: CreateProjektView
   },
@@ -50,6 +51,11 @@ const routes = [
     name: 'EditProjektView',
     component: EditProjektView,
     props: true
+  },
+  {
+    path: '/login',
+    name: 'LoginView.vue',
+    component: LoginView,
   }
 ]
 
