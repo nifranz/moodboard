@@ -168,7 +168,7 @@
                     this.creating = true;
                     let projektURI = await api.createProjekt(this.form);
                     this.form= {};
-                    window.location.href = projektURI;
+                    this.$router.push(projektURI);
                     this.loading = false;
                 } catch (e) {
                     console.error(e);

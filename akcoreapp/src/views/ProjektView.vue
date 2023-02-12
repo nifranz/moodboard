@@ -125,7 +125,7 @@
                 console.log(projekt);
                 try {
                     await api.createProjekt(projekt);
-                    window.location.href = '/projekte';
+                    this.$router.push('/projekte');
                 } catch (e) {
                     confirm("Fehler");
                 }
@@ -137,7 +137,7 @@
                 if (confirm('Sind Sie sicher? Alle Umfragen und die zugehörigen Antworten werden gelöscht. Diese Aktion kann nicht Rückgängig gemacht werden.')) {
                     this.loading = true;
                     await api.deleteProjekt(this.projekt.projektId);
-                    window.location.href = '/projekte'
+                    this.$router.push('/projekte');
                 }
             },
             async selectAllTeiln() {

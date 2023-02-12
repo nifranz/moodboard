@@ -160,7 +160,7 @@
                 console.log(this.projekt)
                 if (confirm("Möchten Sie den Vorgang abbrechen und zur Projektübersicht zurückkehren?")) {
                     
-                    window.location.href = `/projekt/${this.projekt.projektId}`
+                    this.$router.push(`/projekt/${this.projekt.projektId}`);
                 }
             },
             async refreshData() {
@@ -213,7 +213,7 @@
                     var projektURI = await api.updateProjekt(this.form, this.projekt.projektId);
                     console.log(projektURI);
                     this.form= {};
-                    window.location.href = projektURI;
+                    this.$router.push(projektURI);
                     this.loading = false;
                 } catch (e) {
                     console.error(e);
