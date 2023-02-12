@@ -5,6 +5,6 @@ module.exports = defineConfig({
     https:false
   },
   publicPath: process.env.NODE_ENV === 'production'
-  ? '/test/'
+  ? '/adminpanel/'
   : '/'
 })
