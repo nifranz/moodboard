@@ -30,7 +30,12 @@
           <li class="nav-item">
             <a class="nav-link disabled" href="#" tabindex="-1" aria-disabled="true">Disabled</a>
           </li>-->
-        </ul> 
+        </ul>
+        <div v-if="account" class="d-flex align-items-center">
+          <div class="mx-3">Eingeloggt als: {{ this.account }}</div>
+          <button  class="btn btn-outline-primary" @click.prevent="logout">Ausloggen</button>
+        </div>
+
         <!-- <form class="d-flex">
           <input class="form-control me-2" type="search" placeholder="Search" aria-label="Search">
           <button class="btn btn-outline-success" type="submit">Search</button>
@@ -39,7 +44,30 @@
     </div>
   </nav>
     <div class="container">
-      <routerView />
+      <routerView v-if="account"/>
+      <div v-if="!account" class="d-flex justify-content-center">
+        <form class="login-form">
+            <div class="card p-3">
+                <!-- Email input -->
+                <div class="form-outline mb-4">
+                    <input type="email" v-model="loginName" class="form-control" />
+                    <label class="form-label" >Accountname</label>
+                </div>
+
+                <!-- Password input -->
+                <div class="form-outline mb-4">
+                    <input type="password" class="form-control" />
+                    <label class="form-label" >Passwort</label>
+                </div>
+
+                <!-- Submit button -->
+                <button type="button" class="btn btn-primary btn-block mb-4" @click.prevent="login">Einloggen</button>
+                <div class="text-center">
+                    <a href="#!">Passwort vergessen?</a>
+                </div>               
+            </div>
+        </form>
+    </div>
     </div>
 </template>
 
@@ -50,19 +78,43 @@
     name : 'App',
     data() {
       return {
-        organisationName: "LSWI-Lehrstuhl"
+        organisationName: "LSWI-Lehrstuhl",
+        loginName: "",
+        account: "",
       }
+    },
+    components: {
     },
     methods: {
       updateOrganisationName(organisationName) {
         this.organisationName = organisationName;
       },
+      accountHandler() {
+        if (this.account) {
+          this.logout()
+        }
+        else {
+          this.$router.push("/login")
+        }
+      },
+      login(){
+        setTimeout(() => {
+          sessionStorage.setItem("account", this.loginName);  
+          this.account = sessionStorage.getItem("account");
+          this.loginName = "";
+        }, "1000");
+      },
       logout(){
-        this.$store.commit('logout');
+        setTimeout(() => {
+          sessionStorage.setItem("account", "")
+          this.account = sessionStorage.getItem("account");
+          this.loginName = "";
+        }, "1000");
       }
     },
     mounted() {
       this.$store.commit('initializeStore');
+      this.account = sessionStorage.getItem("account");   
     }
   }
   // set default organisation
@@ -102,5 +154,10 @@ nav a.router-link-exact-active {
 
 .flex-1 {
   flex:1;
+}
+
+.login-form {
+    flex:1;
+    max-width: 650px;
 }
 </style>
