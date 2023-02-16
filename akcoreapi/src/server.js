@@ -4,6 +4,7 @@ const cors = require('cors')
 const bodyParser = require('body-parser')
 const { Sequelize, DataTypes } = require('sequelize')
 const axios = require('axios')
+// const morgan = require('morgan')
 
 const connection = require('./connection')
     /* required ./connection.js' structure:
@@ -107,6 +108,7 @@ class LRPC {
             let data = await lrpc_req('list_surveys', 'list_surveys', [this.#sessionKey]);
             if (data.error) throw new Error (data.error);
             console.log(data.result);
+            return (data.result);
         } catch (error) {
             throw new Error(error);
         }        
@@ -201,6 +203,21 @@ class LRPC {
          }
     }
 
+    async listParticipants(surveyId) {
+        try {
+            if (!this.#activeConnection) {
+                throw new Error("No active connection! Establish a connection first by calling openConnection()!");
+            }
+            let data = await lrpc_req('list_participants, survey '+surveyId, 'list_participants', [this.#sessionKey, surveyId, 0, 10000, false, ["attribute_1", "attribute_2"]]);
+            if (data.error) 
+            console.log(data.result);
+            return(data.result);
+        } catch (error) {
+            console.log(error);
+        }  
+
+    }
+
     connectionIsActive () {
         return this.#activeConnection;
     }
@@ -240,7 +257,7 @@ let akcoredb = new Sequelize(
 
 // Establishing a connection with sequlalize to the mysql "sequalizedb" database
 akcoredb.authenticate().then(() => {
-    console.log('Connection has been established successfully.');
+    console.log('Connection to the database has been established successfully.');
 }).catch((error) => {
     console.error('Unable to connect to the database: ', error);
 });
@@ -343,6 +360,15 @@ const ProjektTeilnahme = akcoredb.define('projektTeilnahme', {
     timestamps: false
 });
 
+const FuelltAus = akcoredb.define('fuelltAus', {
+    mitarbeiterLimesurveyTokenId:{
+        type: DataTypes.STRING
+    },
+}, {
+    timestamps: false
+});
+
+
 // Creating associations:
 // Organisation 1 :: n Mitarbeiter
 Organisation.hasMany(Mitarbeiter, {foreignKey: 'organisationId'});
@@ -363,6 +389,10 @@ Projekt.belongsTo(Organisation, {foreignKey: 'organisationId'});
 // Projekt 1 :: n Umfrage
 Projekt.hasMany(Umfrage, {foreignKey: 'projektId'});
 Umfrage.belongsTo(Projekt, {foreignKey: 'projektId'});
+
+// Mitarbeiter m :: n Umfrage
+Mitarbeiter.belongsToMany(Umfrage, { through: FuelltAus });
+Umfrage.belongsToMany(Mitarbeiter, { through: FuelltAus });
 
 // Projekt m :: n Mitarbeiter
 Projekt.belongsToMany(Mitarbeiter, { through: ProjektTeilnahme });
@@ -416,13 +446,14 @@ app.put("/mitarbeiter", async (req, res) => {
     console.log("PUT /mitarbeiter");
     // update a mitarbeiter at specific mitarbeiterId
     data = req.body; // the data sent by the client in request body
+    console.log(req.body);
 
-    if(!data.mitarbeiterName || !data.mitarbeiterEmail || !data.mitarbeiterAbteilung) return res.sendStatus(HTTP.BAD_REQUEST);
+    if(!data.mitarbeiterName || !data.mitarbeiterEmail || !data.abteilungId) return res.sendStatus(HTTP.BAD_REQUEST);
 
     await Mitarbeiter.update({ 
         mitarbeiterName: data.mitarbeiterName, 
         mitarbeiterEmail: data.mitarbeiterEmail, 
-        mitarbeiterAbteilung: data.mitarbeiterAbteilung 
+        abteilungId: data.abteilungId
     }, { where: { mitarbeiterId: data.mitarbeiterId } })
     .then(result => {
         return res.sendStatus(HTTP.CREATED);
@@ -459,11 +490,13 @@ app.get("/projekte/:organisationId", async (req, res) => {
 });
 
 app.get("/projekt/:projektId", async(req, res) => {
+    
     try {
         var projektId = req.params.projektId;
     } catch (e) {
         return res.sendStatus(HTTP.BAD_REQUEST);
     }
+    console.log("/projekt/"+projektId);
 
     const result = await Projekt.findOne({
         where: {projektId: projektId},
@@ -498,27 +531,30 @@ app.post("/projekt", async (req, res) => {
                 console.log("bad request")
                 return res.sendStatus(HTTP.BAD_REQUEST);
         }
-    
-        var projekt = await Projekt.create(data);
+
+        // create new projekt
+        let projekt = await Projekt.create(data);
 
         // Opening a connection to LimeSurvey RPC
         client = new LRPC();
         await client.openConnection();
 
-        var surveyIds = []; // array of created surveyIds
+        let surveyIds = []; // array of created surveyIds
+        // adding all umfragen to projekt
         for (u of data.umfragen) {
             await client.createSurvey(u.startDate, u.stopDate)
             .then( async surveyId => {          
                 await client.activateTokens(surveyId, [1,2]);    
                 surveyIds.push(surveyId); 
                 u.umfrageLimesurveyId = surveyId;
-                let umfrage = await Umfrage.create(u);;
+                let umfrage = await Umfrage.create(u);
                 await projekt.addUmfrage(umfrage);
+                umfragen.push(umfrage);
             }).catch(error => {
                 throw new Error(error);
             });
         }
-        let projektTeilnehmer = [];
+        // adding all teilnehmer to projekt
         for (teiln of data.teilnehmer) {
             console.log("Teilnehmer-Data:", teiln);
             let teilnId = teiln.mitarbeiterId;
@@ -528,32 +564,41 @@ app.post("/projekt", async (req, res) => {
             });
             await projekt.addMitarbeiter(teilnehmer, { through: { mitarbeiterRolle: teiln.mitarbeiterRolle } });
         }
-        projekt = await Projekt.findOne({
+
+        // get all newly created projektTeilnehmer and projektUmfragen from projekt
+        projekt = await Projekt.findOne({ 
             where: {projektId: projekt.projektId},
-            include: { 
+            include: [{ 
                 model: Mitarbeiter, 
                 include: [Abteilung]
-            }
+            }, { model: Umfrage }]
         });
-        projektTeilnehmer = projekt.mitarbeiters;
+        console.log(projekt);
+        let projektTeilnehmer = projekt.mitarbeiters;
+        let projektUmfragen = projekt.umfrages;
+        console.log(projektUmfragen);
+        
 
-        // adding participants to survey in limesurvey
+        // adding participants to survey in limesurvey and write token id for each mitarbeiter in database
         for (let teilnehmer of projektTeilnehmer) {
-            for (sId of surveyIds) {
+            for (let umfr of projektUmfragen) {
                 // adding participant to limesurvey
-                let limesurveyTokenId = await client.addParticipants(sId, [ {"lastname":teilnehmer.mitarbeiterName,"firstname":"TBD","email":teilnehmer.mitarbeiterEmail,"attribute_1":teilnehmer.projektTeilnahme.mitarbeiterRolle, "attribute_2":teilnehmer.abteilung.abteilungName} ]);
+                let limesurveyTokenId = await client.addParticipants(umfr.umfrageLimesurveyId, [ {"lastname":teilnehmer.mitarbeiterName,"firstname":"TBD","email":teilnehmer.mitarbeiterEmail,"attribute_1":teilnehmer.projektTeilnahme.mitarbeiterRolle, "attribute_2":teilnehmer.abteilung.abteilungName} ]);
                 console.log("tokenid: ", limesurveyTokenId);
+
                 // writing the limesurveyTokenId to database
-                ProjektTeilnahme.update(
-                    { limesurveyTokenId: limesurveyTokenId }, 
-                    { where: { mitarbeiterMitarbeiterId: teilnehmer.mitarbeiterId, projektProjektId: projekt.projektId } }
-                );
+                teilnehmer.addUmfrage(umfr, { through: { mitarbeiterLimesurveyTokenId: limesurveyTokenId } })
+
+                // ProjektTeilnahme.update(
+                //     { limesurveyTokenId: limesurveyTokenId }, 
+                //     { where: { mitarbeiterMitarbeiterId: teilnehmer.mitarbeiterId, projektProjektId: projekt.projektId } }
+                // );
             }
         }
         console.log("returning HTTP.CREATED");
         return res // the response
             .setHeader('Location', `/projekt/${projekt.projektId}`) // setting location header for the response to the client
-            .set( { 'Access-Control-Expose-Headers': 'location', } )
+            .set( { 'Access-Control-Expose-Headers': 'location', } ) // exposing location header
             .sendStatus(HTTP.CREATED);
     } 
     catch (error) {
@@ -746,8 +791,25 @@ app.get("/lrpc/createSurvey", async (req, res) => {
     }
 })
 
+app.get("/lrpc/listParticipants/:surveyId", async (req, res) => {
+    let client = new LRPC();
+    await client.openConnection();
+    
+    console.log("Connection active:", client.connectionIsActive())
+    try {
+        let result = await client.listParticipants(req.params.surveyId);
+        console.log("result:", result)
+        return res.send(result);
+    } catch (err) {
+        console.log(err);
+        return res.sendStatus(HTTP.INTERNAL_ERROR);
+    } finally {
+        await client.closeConnection();
+    }
+})
+
 akcoredb
-    .sync({ alter: true })
+    .sync()
     .then(() => {
         app.listen(PORT, async () => {
              // creating an entry that already exists in the database will result in an error, so we want to catch that error
@@ -760,7 +822,7 @@ akcoredb
             try { await Abteilung.findOrCreate( { where: { abteilungId: 2, abteilungName: "Lager", organisationId: 1 }}); } catch (error) { console.log(error); }
             try { await Abteilung.findOrCreate( { where: { abteilungId: 3, abteilungName: "Management", organisationId: 1 }}); } catch (error) { console.log(error); }
 
-            console.log('listening to PORT localhost:' + PORT)
+            console.log('Listening on port localhost:' + PORT+ ". Apache redirects to this from /api/");
         })
     })
 
