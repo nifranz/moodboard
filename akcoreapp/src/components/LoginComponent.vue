@@ -5,7 +5,7 @@
             <div class="card p-3">
                 <!-- Email input -->
                 <div class="form-outline mb-4">
-                    <input type="email" class="form-control" />
+                    <input type="email" v-model="loginName" class="form-control" />
                     <label class="form-label" >Accountname</label>
                 </div>
 
@@ -16,7 +16,7 @@
                 </div>
 
                 <!-- Submit button -->
-                <button type="button" class="btn btn-primary btn-block mb-4">Einloggen</button>
+                <button type="button" class="btn btn-primary btn-block mb-4" @click.prevent="login">Einloggen</button>
                 <div class="text-center">
                     <a href="#!">Passwort vergessen?</a>
                 </div>               
@@ -27,11 +27,14 @@
 
 <script>
     export default {
-        name: 'LoginView.vue',
+        name: 'LoginComponent.vue',
         data() {
             return {
-
+                loginName: ""
             }
+        },
+        login() {
+            sessionStorage.setItem("account", true);  
         }
     }
 </script>

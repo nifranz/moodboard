@@ -1,7 +1,8 @@
 <template>
   <h2>Mitarbeiter</h2>
-  <LoadingComponent v-if="loading" loading=loading />
-  <div class="mt-4">
+  <LoadingComponent v-if="loading" :loading="this.loading" />
+  <ErrorComponent v-if="error" :error="this.error" />
+  <div v-if="!error" class="mt-4">
     <div v-for="ma in mitarbeiter" :key="ma">
       <form class="needs-validation">
         <div class="row">
@@ -21,7 +22,7 @@
             <div class="input-group mb-3">
               <span class="input-group-text">Abteilung</span>
               <select class="form-control" v-model="ma.abteilungId">
-                <option value="null">Bitte Rolle auswählen</option>
+                <option disabled value=undefined>Bitte Rolle auswählen</option>
                 <option v-for="abt in abteilungen" :key="abt" v-bind:value="abt.abteilungId">{{ abt.abteilungName }}</option>
               </select>
             </div>
@@ -54,7 +55,7 @@
           <div class="input-group mb-3">
             <span class="input-group-text" id="basic-addon1">Abteilung</span>
             <select class="form-control" v-model="model.abteilungId" aria-label="Default select example">
-              <option value=undefined>Bitte auswählen</option>
+              <option disabled value=undefined>Bitte auswählen</option>
               <option v-for="abt in abteilungen" :key="abt" v-bind:value="'' + abt.abteilungId">{{ abt.abteilungName }}</option>
             </select> 
           </div>
@@ -73,13 +74,16 @@
 
   import api from '@/api'
   import LoadingComponent from "@/components/LoadingComponent.vue"
+  import ErrorComponent from "@/components/ErrorComponent.vue"
   export default {
     name: "MitarbeiterView.vue",
     components: {
-      LoadingComponent
+      LoadingComponent,
+      ErrorComponent
     },
     data(){
         return{
+            error: undefined,
             loading: false,
             mitarbeiter: [],
             abteilungen: [],
@@ -95,8 +99,14 @@
     methods: {
       async refreshData() {
         this.loading = true;
-        this.mitarbeiter = await api.getMitarbeiterAll(this.organisationId);
-        this.abteilungen = await api.getAbteilungen(this.organisationId);
+        try {
+          this.mitarbeiter = await api.getMitarbeiterAll(this.organisationId);
+          this.abteilungen = await api.getAbteilungen(this.organisationId);
+        } catch (e) {
+          this.error = e;
+          console.log(this.error)
+          console.log(e)
+        }
         console.log("Mitarbeiter:")
         console.log(this.mitarbeiter);
         console.log("Abteilungen:")
