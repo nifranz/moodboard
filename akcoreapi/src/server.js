@@ -50,6 +50,8 @@ async function lrpc_req(id, method, params) {
     return response.data;
 }
 
+
+
 /**
  * @class Class representing an interface to the LimeSurvey RPC API (documented as LRPC)
  */
@@ -310,6 +312,24 @@ const Mitarbeiter = akcoredb.define('mitarbeiter', {
     timestamps: false
 });
 
+// const Account = akcoredb.define('mitarbeiter', {
+//     accountId:{
+//         type: DataTypes.INTEGER,
+//         autoIncrement: true
+//     },
+//     accountName:{
+//         type: DataTypes.STRING
+//     },
+//     accountPasswort:{
+//         type: DataTypes.STRING
+//     },
+//     accountType: {
+//         type: DataTypes.STRING
+//     }
+// }, {
+//     timestamps: false
+// });
+
 const Abteilung = akcoredb.define('abteilung', {
     abteilungId: {
         type: DataTypes.INTEGER,
@@ -385,7 +405,7 @@ const FuelltAus = akcoredb.define('fuelltAus', {
 });
 
 
-// Creating associations:
+// Defining associations:
 // Organisation 1 :: n Mitarbeiter
 Organisation.hasMany(Mitarbeiter, {foreignKey: 'organisationId'});
 Mitarbeiter.belongsTo(Organisation, {foreignKey: 'organisationId'});
@@ -414,10 +434,7 @@ Mitarbeiter.belongsToMany(Projekt, { through: ProjektTeilnahme });
 Mitarbeiter.belongsToMany(Umfrage, { through: FuelltAus });
 Umfrage.belongsToMany(Mitarbeiter, { through: FuelltAus });
 
-
-
 // Mitarbeiter.belongsToMany(Projekt, { through: 'nimmtTeil' })
-
 
 // Create REST API endpoints
 // C for Create: HTTP POST
@@ -430,6 +447,10 @@ app.get("/organisations", async (req, res) => {
     let organisations = await Organisation.findAll();
     return res.send(organisations);
 });
+
+/** 
+ * API ENDPOINTS FOR MITARBEITER
+ */
 
 app.get("/mitarbeiterAll/:organisationId", async (req, res) => {
     console.log("GET /mitarbeiterAll/"+req.params.organisationId);
@@ -446,7 +467,7 @@ app.post("/mitarbeiter", async (req, res) => {
     data = req.body; // the data sent by the client in request body
     console.log("incoming request: ", data);
 
-    if( !data.mitarbeiterName || !data.mitarbeiterEmail || !data.abteilungId) return res.sendStatus(HTTP.BAD_REQUEST); 
+    if( !data.mitarbeiterName || !data.mitarbeiterEmail || !data.abteilungId || !data.organisationId ) return res.sendStatus(HTTP.BAD_REQUEST); 
 
     await Mitarbeiter.create({ 
         mitarbeiterName: data.mitarbeiterName, 
@@ -515,6 +536,10 @@ app.delete("/mitarbeiter/:mitarbeiterId", async (req, res)  => {
     if (!success) return res.sendStatus(HTTP.ENTITY_NOT_FOUND);
     return res.sendStatus(HTTP.OK);
 });
+
+/** 
+ * API ENDPOINTS FOR PROJEKTE 
+ */
 
 app.get("/projekte/:organisationId", async (req, res) => {
     console.log("GET /projekte/"+req.params.organisationId);
@@ -801,18 +826,93 @@ app.delete('/projekt/:projektId', async(req,res) => {
     }
 });
 
-
-
+/** 
+ * API ENDPOINTS FOR ABTEILUNGEN 
+ */
 app.get("/abteilungen/:organisationId", async(req, res) => {
     console.log("GET /abteilungen/"+req.params.organisationId);
     let organisationId = req.params.organisationId;
     if (!organisationId) return res.sendStatus(HTTP.BAD_REQUEST);
     if(!(await Organisation.findOne({where:{organisationId: organisationId}}))) return res.sendStatus(HTTP.ENTITY_NOT_FOUND);
 
-    let abteilung = await Abteilung.findAll({where: { organisationId: organisationId }});
+    let abteilung = await Abteilung.findAll({where: { organisationId: organisationId }, include: [Mitarbeiter]});
 
     return res.send(abteilung);
-}) 
+})
+
+app.post("/abteilung/", async(req, res) => {
+    console.log("POST /abteilung");
+    data = req.body; // the data sent by the client in request body
+    console.log(req.body)
+
+    if( !data.abteilungName || !data.organisationId ) return res.sendStatus(HTTP.BAD_REQUEST); 
+
+    await Abteilung.create({ 
+        abteilungName: data.abteilungName,
+        organisationId: data.organisationId
+    });
+
+    return res.sendStatus(HTTP.CREATED);
+});
+
+app.delete("/abteilung/:abteilungId", async (req, res)  => {    
+    console.log("DELETE /abteilung");
+    // DELETE a mitarbeiter for specific mitarbeiterId
+    let abteilung = await Abteilung.findOne({
+        where: {abteilungId: req.params.abteilungId},
+        include: [Mitarbeiter]
+    });
+    if (!abteilung) {
+        return res.sendStatus(HTTP.ENTITY_NOT_FOUND);
+    }
+    if (!abteilung.mitarbeiters.length) {
+        abteilung.destroy();
+        return res.sendStatus(HTTP.OK);
+    } else {
+        console.error("Cant delete non-empty Abteilung");
+        return res.sendStatus(HTTP.BAD_REQUEST);
+    }
+});
+
+/** 
+ * API ENDPOINTS FOR LOGIN VERIFICATION
+ */
+app.post("/verifyLogin", async (req, res) => {
+    const ACCOUNTS = [
+        {type: "admin", accountName: "admin1", passwort: "passwort", organisationId: 1},
+        {type: "admin", accountName: "admin2", passwort: "passwort", organisationId: 1},
+        {type: "cm", accountName: "changeManager1", passwort: "passwort", organisationId: 1},
+        {type: "cm", accountName: "changeManager2", passwort: "passwort", organisationId: 1},
+        {type: "superadmin", accountName: "dev", passwort: "passwort", organisationId: 1}
+    ]
+
+
+    let data = req.body;
+    console.log(data)
+    if (!data) return res.sendStatus(HTTP.BAD_REQUEST);
+
+    let account;
+    for (a of ACCOUNTS) {
+        console.log('account:', a)
+        if (a.accountName == data.accountName) account = a;
+    }
+
+    if (!account) return res.sendStatus(HTTP.ENTITY_NOT_FOUND);
+
+    if (account.passwort == data.passwort) {
+        console.log("yay")
+        let x = {type: account.type, accountName: account.accountName, organisationId: account.organisationId}
+        delete account.passwort;
+
+        return res.send(account);
+    } else {
+        return res.sendStatus(401);
+    }
+})
+
+/** 
+ * EXPERIMENTAL API ENDPOINTS
+ */
 
 app.get("/lrpc/createSurvey", async (req, res) => {
     let client = new LRPC();
