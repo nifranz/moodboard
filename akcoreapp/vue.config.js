@@ -6,5 +6,6 @@ module.exports = defineConfig({
   },
   publicPath: process.env.NODE_ENV === 'production'
   ? '/adminpanel/'
-  : '/'
+  : '/',
+  outputDir: '/var/www/html/akcore/dist'
 })
