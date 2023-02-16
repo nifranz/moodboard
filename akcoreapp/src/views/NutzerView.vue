@@ -1,8 +1,8 @@
 <template>
-  <h2>Organisation</h2>
+  <h2 class="mt-3">Nutzer</h2>
   <LoadingComponent v-if="loading" loading=loading />
   <div  v-if="!loading" class="mt-4 mb-4">
-    <p>Hier können sie ihre Organisation auswählen:</p>
+    <!-- <p>Hier können sie ihre Organisation auswählen:</p>
     <form>
       <div class="card p-3 w-50">
         <div class="input-group mb-3">
@@ -13,8 +13,8 @@
         </div>
         <button class="btn btn-outline-primary" @click.prevent="setOrg(selectedOrg)" type="submit">Bestätigen</button>
       </div>
-    </form>
-    <h2 class="mt-3">Nutzer</h2>
+    </form> -->
+    
   </div>
 </template>
 

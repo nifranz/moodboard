@@ -18,7 +18,7 @@ const routes = [
   {
     path: '/',
     name: 'home',
-    redirect: '/nutzer'
+    redirect: '/projekte'
   },
   {
     path: '/nutzer',
