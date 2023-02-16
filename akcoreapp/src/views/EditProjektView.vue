@@ -158,7 +158,7 @@
         methods: {
             cancel() {
                 console.log(this.projekt)
-                if (confirm("Möchten Sie den Vorgang abbrechen und zur Projektübersicht zurückkehren?")) {
+                if (confirm("Möchten Sie den Vorgang abbrechen und zur Projektseite zurückkehren?")) {
                     
                     this.$router.push(`/projekt/${this.projekt.projektId}`);
                 }

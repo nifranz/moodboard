@@ -95,7 +95,10 @@
             <label v-if="validated.all" class="is-valid form-control text-success">Alle Eingaben scheinen korrekt zu sein.</label>
             <label v-if="!validated.all" class="is-invalid form-control text-danger">Bitte überprüfen Sie ihre Eingaben.</label>
         </div>
-        <button class="btn btn-primary" @click.prevent="submitForm" type="submit">Projekt erstellen</button>  
+        <div class="d-flex flex-row">
+            <button class="btn btn-primary flex-1" @click.prevent="submitForm" type="submit">Projekt erstellen</button>  
+            <button class="btn btn-outline-secondary flex-1" @click.prevent="cancel" type="submit">Abbrechen</button>
+        </div>
     </form>
 </template>
 
@@ -144,6 +147,13 @@
             await this.refreshData();
         },
         methods: {
+            cancel() {
+                console.log(this.projekt)
+                if (confirm("Möchten Sie den Vorgang abbrechen und zur Projektübersicht zurückkehren?")) {
+                    
+                    this.$router.push(`/projekte`);
+                }
+            },
             async refreshData() {
                 this.loading = true;
                 this.mitarbeiter = await api.getMitarbeiterAll(this.organisationId);

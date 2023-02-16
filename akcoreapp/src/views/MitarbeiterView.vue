@@ -40,9 +40,13 @@
         <button v-if="!abt.mitarbeiters.length" class="btn btn-outline-danger mt-2" @click.prevent="deleteAbteilung(abt)">Abteilung löschen</button>
         <hr class="hr" />
       </ul>
+      <div v-if="!abteilungen.length">
+        <p class="color-secondary">Es existieren keine Abteilungen. Um einen Mitarbeiter zu anzulegen, legen sie bitte zunächst eine Abteilung an.</p>
+        <hr class="hr" />
+      </div>
     </form>
 
-    <form v-if="!loading" class="needs-validation g-3" novalidate>
+    <form v-if="!loading && abteilungen.length" class="needs-validation g-3" novalidate>
       <h5>Mitarbeiter hinzufügen:</h5>
       <div class="row">
         <div class="col">
