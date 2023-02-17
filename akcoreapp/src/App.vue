@@ -13,9 +13,9 @@
           <li class="nav-item">
             <router-link to="/mitarbeiter" active-class="active" class="nav-link">Mitarbeiter</router-link>
           </li>
-          <li class="nav-item">
+          <!-- <li class="nav-item">
             <router-link to="/nutzer" active-class="active" class="nav-link">Nutzer</router-link>           
-          </li>
+          </li> -->
 
 
           <!-- <li class="nav-item dropdown">
@@ -189,7 +189,7 @@ nav a.router-link-exact-active {
 }
 
 .login-form {
-    flex:1;
+    width: 500px;
     max-width: 650px;
 }
 </style>
