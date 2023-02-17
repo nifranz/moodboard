@@ -5,7 +5,6 @@ const bodyParser = require('body-parser')
 const { Sequelize, DataTypes } = require('sequelize')
 const axios = require('axios')
 // const morgan = require('morgan')
-
 const connection = require('./connection')
     /* required ./connection.js' structure:
         const db_name = 'akcoredb';
@@ -26,9 +25,23 @@ const connection = require('./connection')
         }
     */
 
-
 const LIME_RPC_URL = 'http://localhost/index.php/admin/remotecontrol/';
 const LRPC_LOGGING = true;
+const ERROR_LOG_PATH = __dirname + "/../logs/error.log"
+
+function initLogs() {
+    let dateString = (new Date(Date.now()).toString()).split(" ");
+    let timeString = dateString[1] + " " + dateString[2] + " " + dateString[3] + " " + dateString[4] + " => "
+    
+    fs.writeFile(ERROR_LOG_PATH, timeString + "Server has been started", function(){})
+}
+
+function handleError(error) {
+    console.error(error);
+    let dateString = (new Date(Date.now()).toString()).split(" ");
+    let timeString = dateString[1] + " " + dateString[2] + " " + dateString[3] + " " + dateString[4] + " => "
+    fs.appendFile(ERROR_LOG_PATH, timeString + error + "\r\n", (error) => {});
+}
 
 /**
  * Make a HTTP-POST request to the limesurvey rpc using axios HTTP library
@@ -49,8 +62,6 @@ async function lrpc_req(id, method, params) {
     if (LRPC_LOGGING) console.log("LRPC-Response for '",id,"' ::", response.data);
     return response.data;
 }
-
-
 
 /**
  * @class Class representing an interface to the LimeSurvey RPC API (documented as LRPC)
@@ -217,11 +228,9 @@ class LRPC {
         } catch (error) {
             console.log(error);
         }  
-
     }
 
     async updateParticipant(surveyId, participantToken, attributeData) {
-        
         try {
             if (!this.#activeConnection) {
                 throw new Error("No active connection! Establish a connection first by calling openConnection()!");
@@ -442,10 +451,18 @@ Umfrage.belongsToMany(Mitarbeiter, { through: FuelltAus });
 // U for Update: HTTP PUT
 // D for Delete: HTTP DELETE
 
+try { // encapsulate api requests in try block to catch errors 
+
 app.get("/organisations", async (req, res) => {
     console.log("GET /organisations");
-    let organisations = await Organisation.findAll();
-    return res.send(organisations);
+
+    try {
+        let organisations = await Organisation.findAll();
+        return res.status(HTTP.OK).send(organisations);
+    } catch (e) {
+        console.error(e);
+        return res.sendStatus(HTTP.INTERNAL_ERROR);
+    }
 });
 
 /** 
@@ -453,38 +470,50 @@ app.get("/organisations", async (req, res) => {
  */
 
 app.get("/mitarbeiterAll/:organisationId", async (req, res) => {
-    console.log("GET /mitarbeiterAll/"+req.params.organisationId);
     let organisationId = req.params.organisationId;
-    if (!organisationId) return res.sendStatus(HTTP.BAD_REQUEST);
-    if(!(await Organisation.findOne({where:{organisationId: organisationId}}))) return res.sendStatus(HTTP.ENTITY_NOT_FOUND);
+    console.log("GET /mitarbeiterAll/"+organisationId);
 
-    let mitarbeiter = await Mitarbeiter.findAll({where: { organisationId: organisationId}});
-    return res.send(mitarbeiter);
+    try {
+        if (!organisationId) return res.sendStatus(HTTP.BAD_REQUEST);
+        if(!(await Organisation.findOne({where:{organisationId: organisationId}}))) return res.sendStatus(HTTP.ENTITY_NOT_FOUND);
+
+        let mitarbeiter = await Mitarbeiter.findAll({where: { organisationId: organisationId}});
+        return res.send(mitarbeiter);
+
+    } catch (e) {
+        handleError(e);
+        return res.sendStatus(HTTP.INTERNAL_ERROR);
+    }
 });
 
 app.post("/mitarbeiter", async (req, res) => {
     console.log("POST /mitarbeiter");
-    data = req.body; // the data sent by the client in request body
-    console.log("incoming request: ", data);
 
-    if( !data.mitarbeiterName || !data.mitarbeiterEmail || !data.abteilungId || !data.organisationId ) return res.sendStatus(HTTP.BAD_REQUEST); 
+    try {
+        data = req.body; // the data sent by the client in request body
+        if( !data.mitarbeiterName || !data.mitarbeiterEmail || !data.abteilungId || !data.organisationId ) return res.sendStatus(HTTP.BAD_REQUEST); 
 
-    await Mitarbeiter.create({ 
-        mitarbeiterName: data.mitarbeiterName, 
-        mitarbeiterEmail: data.mitarbeiterEmail, 
-        abteilungId: data.abteilungId, 
-        organisationId: data.organisationId
-    });
+        await Mitarbeiter.create({ 
+            mitarbeiterName: data.mitarbeiterName, 
+            mitarbeiterEmail: data.mitarbeiterEmail, 
+            abteilungId: data.abteilungId, 
+            organisationId: data.organisationId
+        });
 
-    return res.sendStatus(HTTP.CREATED);
+        return res.sendStatus(HTTP.CREATED);
+
+    } catch (e) {
+        handleError(e);
+        return res.sendStatus(HTTP.INTERNAL_ERROR);
+    }    
 });
 
 app.put("/mitarbeiter", async (req, res) => {
+    console.log("PUT /mitarbeiter");
+
     try {
-        console.log("PUT /mitarbeiter");
         // update a mitarbeiter at specific mitarbeiterId
         data = req.body; // the data sent by the client in request body
-        console.log(req.body);
 
         if(!data.mitarbeiterName || !data.mitarbeiterEmail || !data.abteilungId) return res.sendStatus(HTTP.BAD_REQUEST);
 
@@ -521,20 +550,28 @@ app.put("/mitarbeiter", async (req, res) => {
             throw new Error(e);
         })
     } catch (e) {
-        console.error(e);
+        handleError(e);
         return res.sendStatus(HTTP.INTERNAL_ERROR);
     }
 });
 
 app.delete("/mitarbeiter/:mitarbeiterId", async (req, res)  => {    
-    console.log("DELETE /mitarbeiter");
-    // DELETE a mitarbeiter for specific mitarbeiterId
-    let success = await Mitarbeiter.destroy({
-        where: {mitarbeiterId: req.params.mitarbeiterId}
-    });
+    let mitarbeiterId = req.params.mitarbeiterId;
+    console.log("DELETE /mitarbeiter/"+mitarbeiterId);
+    
+    try {
+        // DELETE a mitarbeiter for specific mitarbeiterId
+        let success = await Mitarbeiter.destroy({
+            where: {mitarbeiterId: mitarbeiterId}
+        });
 
-    if (!success) return res.sendStatus(HTTP.ENTITY_NOT_FOUND);
-    return res.sendStatus(HTTP.OK);
+        if (!success) return res.sendStatus(HTTP.ENTITY_NOT_FOUND);
+        return res.sendStatus(HTTP.OK);
+        
+    } catch (e) {
+        handleError(e);
+        return res.status(HTTP.INTERNAL_ERROR).send(e);
+    }
 });
 
 /** 
@@ -542,50 +579,56 @@ app.delete("/mitarbeiter/:mitarbeiterId", async (req, res)  => {
  */
 
 app.get("/projekte/:organisationId", async (req, res) => {
-    console.log("GET /projekte/"+req.params.organisationId);
-    // READ all projekte for specific organisationId
     let organisationId = req.params.organisationId;
+    console.log("GET /projekte/"+organisationId);
 
-    if (!organisationId) return res.sendStatus(HTTP.BAD_REQUEST);
-    
-    let projekte = await Projekt.findAll({
-        where: { organisationId: organisationId }, 
-        include: [Mitarbeiter, Umfrage]
-    });
+    try {
+        // READ all projekte for specific organisationId      
+        let projekte = await Projekt.findAll({
+            where: { organisationId: organisationId }, 
+            include: [Mitarbeiter, Umfrage]
+        });
+        return res.send(projekte);
 
-    return res.send(projekte);
+    } catch (e) {
+        handleError(e);
+        return res.status(HTTP.INTERNAL_ERROR).send(e);
+    }
 });
 
 app.get("/projekt/:projektId", async(req, res) => {
+    let projektId = req.params.projektId;
+    console.log("GET /projekt/" + projektId);
     
     try {
-        var projektId = req.params.projektId;
+        const result = await Projekt.findOne({
+            where: {projektId: projektId},
+            include: [{ 
+                model: Mitarbeiter, 
+                include: [Abteilung]
+            }, {
+                model: Umfrage
+            }]
+        });
+        
+        // const result = await Projekt.findOne({
+        //     where: { projektId: projektId },
+        //     include: [Mitarbeiter, Umfrage]
+        // });
+
+        if (!result) return res.sendStatus(HTTP.ENTITY_NOT_FOUND);
+        return res.send(result);
+
     } catch (e) {
-        return res.sendStatus(HTTP.BAD_REQUEST);
+        handleError(e);
+        return res.status(HTTP.INTERNAL_ERROR).send(e);
     }
-    console.log("/projekt/"+projektId);
-
-    const result = await Projekt.findOne({
-        where: {projektId: projektId},
-        include: [{ 
-            model: Mitarbeiter, 
-            include: [Abteilung]
-        }, {
-            model: Umfrage
-        }]
-    });
-    
-    // const result = await Projekt.findOne({
-    //     where: { projektId: projektId },
-    //     include: [Mitarbeiter, Umfrage]
-    // });
-
-    if (!result) return res.sendStatus(HTTP.ENTITY_NOT_FOUND);
-    return res.send(result);
 })
 
 app.post("/projekt", async (req, res) => {
+    console.log("POST /projekt");
     let client;
+    
     try {
         data = req.body; // the data sent by the client in request body
 
@@ -639,11 +682,8 @@ app.post("/projekt", async (req, res) => {
                 include: [Abteilung]
             }, { model: Umfrage }]
         });
-        console.log(projekt);
         let projektTeilnehmer = projekt.mitarbeiters;
-        let projektUmfragen = projekt.umfrages;
-        console.log(projektUmfragen);
-        
+        let projektUmfragen = projekt.umfrages;       
 
         // adding participants to survey in limesurvey and write token id for each mitarbeiter in database
         for (let teilnehmer of projektTeilnehmer) {
@@ -666,9 +706,9 @@ app.post("/projekt", async (req, res) => {
             .setHeader('Location', `/projekt/${projekt.projektId}`) // setting location header for the response to the client
             .set( { 'Access-Control-Expose-Headers': 'location', } ) // exposing location header
             .sendStatus(HTTP.CREATED);
-    } 
+    }
     catch (error) {
-        console.log(error);
+        handleError(error);
         return res.sendStatus(HTTP.INTERNAL_ERROR);
     } 
     finally {
@@ -677,7 +717,10 @@ app.post("/projekt", async (req, res) => {
 });
 
 app.put("/projekt/:projektId", async (req, res) => {
+    let projektId = req.params.projektId;
+    console.log("PUT /projekt/",projektId);
     let client;
+
     try {        
         data = req.body; // the data sent by the client in request body
 
@@ -691,7 +734,7 @@ app.put("/projekt/:projektId", async (req, res) => {
                 return res.sendStatus(HTTP.BAD_REQUEST);
         }
     
-        var projekt = await Projekt.findOne({where: {projektId: req.params.projektId}});
+        var projekt = await Projekt.findOne({where: {projektId: projektId}});
         if (!projekt) return res.sendStatus(HTTP.ENTITY_NOT_FOUND);
         // update projekt meta-data
         projekt.set({
@@ -792,9 +835,9 @@ app.put("/projekt/:projektId", async (req, res) => {
             .setHeader('Location', `/projekt/${projekt.projektId}`) // setting location header for the response to the client
             .set( { 'Access-Control-Expose-Headers': 'location', } )
             .sendStatus(HTTP.CREATED);
-    } 
+    }
     catch (error) {
-        console.error(error);
+        handleError(error);
         return res.sendStatus(HTTP.INTERNAL_ERROR);
     } 
     finally {
@@ -803,9 +846,11 @@ app.put("/projekt/:projektId", async (req, res) => {
 });
 
 app.delete('/projekt/:projektId', async(req,res) => {
+    let projektId = req.params.projektId;
+    console.log("DELETE /projekt/",projektId)
     let client;
     try {
-        let projekt = await Projekt.findOne({where: {projektId: req.params.projektId},include: [Umfrage]});
+        let projekt = await Projekt.findOne({where: {projektId: projektId},include: [Umfrage]});
         if (!projekt) return res.sendStatus(HTTP.ENTITY_NOT_FOUND);
         var projektUmfragen = projekt.umfrages;
     
@@ -819,7 +864,7 @@ app.delete('/projekt/:projektId', async(req,res) => {
         await projekt.destroy();
         return res.sendStatus(HTTP.OK);
     } catch (error) {
-        console.error(error);
+        handleError(error);
         return res.sendStatus(HTTP.INTERNAL_ERROR);
     } finally {
         if (client) client.closeConnection();
@@ -831,46 +876,60 @@ app.delete('/projekt/:projektId', async(req,res) => {
  */
 app.get("/abteilungen/:organisationId", async(req, res) => {
     console.log("GET /abteilungen/"+req.params.organisationId);
-    let organisationId = req.params.organisationId;
-    if (!organisationId) return res.sendStatus(HTTP.BAD_REQUEST);
-    if(!(await Organisation.findOne({where:{organisationId: organisationId}}))) return res.sendStatus(HTTP.ENTITY_NOT_FOUND);
+    try {
+        let organisationId = req.params.organisationId;
+        if (!organisationId) return res.sendStatus(HTTP.BAD_REQUEST);
+        if(!(await Organisation.findOne({where:{organisationId: organisationId}}))) return res.sendStatus(HTTP.ENTITY_NOT_FOUND);
 
-    let abteilung = await Abteilung.findAll({where: { organisationId: organisationId }, include: [Mitarbeiter]});
+        let abteilung = await Abteilung.findAll({where: { organisationId: organisationId }, include: [Mitarbeiter]});
 
-    return res.send(abteilung);
+        return res.send(abteilung);
+    } catch (e) {
+        handleError(e);
+        return res.status(HTTP.INTERNAL_ERROR).send(e);
+    }
 })
 
 app.post("/abteilung/", async(req, res) => {
     console.log("POST /abteilung");
-    data = req.body; // the data sent by the client in request body
-    console.log(req.body)
+    try {
+        data = req.body; // the data sent by the client in request body
+        console.log(req.body)
 
-    if( !data.abteilungName || !data.organisationId ) return res.sendStatus(HTTP.BAD_REQUEST); 
+        if( !data.abteilungName || !data.organisationId ) return res.sendStatus(HTTP.BAD_REQUEST); 
 
-    await Abteilung.create({ 
-        abteilungName: data.abteilungName,
-        organisationId: data.organisationId
-    });
+        await Abteilung.create({ 
+            abteilungName: data.abteilungName,
+            organisationId: data.organisationId
+        });
 
-    return res.sendStatus(HTTP.CREATED);
+        return res.sendStatus(HTTP.CREATED);
+    } catch (e) {
+        handleError(e);
+        res.status(HTTP.INTERNAL_ERROR).send(e);
+    }
 });
 
-app.delete("/abteilung/:abteilungId", async (req, res)  => {    
-    console.log("DELETE /abteilung");
-    // DELETE a mitarbeiter for specific mitarbeiterId
-    let abteilung = await Abteilung.findOne({
-        where: {abteilungId: req.params.abteilungId},
-        include: [Mitarbeiter]
-    });
-    if (!abteilung) {
-        return res.sendStatus(HTTP.ENTITY_NOT_FOUND);
-    }
-    if (!abteilung.mitarbeiters.length) {
-        abteilung.destroy();
-        return res.sendStatus(HTTP.OK);
-    } else {
-        console.error("Cant delete non-empty Abteilung");
-        return res.sendStatus(HTTP.BAD_REQUEST);
+app.delete("/abteilung/:abteilungId", async (req, res)  => {  
+    console.log("DELETE /abteilung");j
+    try {
+        // DELETE a mitarbeiter for specific mitarbeiterId
+        let abteilung = await Abteilung.findOne({
+            where: {abteilungId: req.params.abteilungId},
+            include: [Mitarbeiter]
+        });
+        if (!abteilung) {
+            return res.sendStatus(HTTP.ENTITY_NOT_FOUND);
+        }
+        if (!abteilung.mitarbeiters.length) {
+            abteilung.destroy();
+            return res.sendStatus(HTTP.OK);
+        } else {
+            return res.sendStatus(HTTP.BAD_REQUEST);
+        }
+    } catch (e) {
+        handleError(e);
+        return res.status(HTTP.INTERNAL_ERROR).send(e);
     }
 });
 
@@ -878,66 +937,72 @@ app.delete("/abteilung/:abteilungId", async (req, res)  => {
  * API ENDPOINTS FOR LOGIN VERIFICATION
  */
 app.post("/verifyLogin", async (req, res) => {
-    const ACCOUNTS = [
-        {type: "admin", accountName: "admin1", passwort: "passwort", organisationId: 1},
-        {type: "admin", accountName: "admin2", passwort: "passwort", organisationId: 1},
-        {type: "cm", accountName: "changeManager1", passwort: "passwort", organisationId: 1},
-        {type: "cm", accountName: "changeManager2", passwort: "passwort", organisationId: 1},
-        {type: "superadmin", accountName: "dev", passwort: "passwort", organisationId: 1}
-    ]
+    console.log("POST /verifyLogin", req.body);
 
+    try {        
+        const ACCOUNTS = [
+            {type: "admin", accountName: "admin1", passwort: "passwort", organisationId: 2},
+            {type: "admin", accountName: "admin2", passwort: "passwort", organisationId: 2},
+            {type: "cm", accountName: "changeManager1", passwort: "passwort", organisationId: 2},
+            {type: "cm", accountName: "changeManager2", passwort: "passwort", organisationId: 1},
+            {type: "superadmin", accountName: "dev", passwort: "passwort", organisationId: 1}
+        ]
 
-    let data = req.body;
-    console.log(data)
-    if (!data) return res.sendStatus(HTTP.BAD_REQUEST);
+        let data = req.body; // get data from request body
+        if (!data) return res.sendStatus(HTTP.BAD_REQUEST); // if no body is present send back HTTP error
 
-    let account;
-    for (a of ACCOUNTS) {
-        console.log('account:', a)
-        if (a.accountName == data.accountName) account = a;
+        let account;
+        for (a of ACCOUNTS) { // check if there is an account matching the requested accountName
+            if (a.accountName == data.accountName) account = a;
+        }
+
+        if (!account) { // if no account is found send back HTTP error
+            console.log("  -> account not found.");
+            return res.sendStatus(HTTP.ENTITY_NOT_FOUND);
+        }
+
+        if (account.passwort == data.passwort) { // if request passwort matches account passwort send back account info
+            console.log("  -> Login sucessfull for account: ", account.accountName);
+            delete account.passwort;
+            return res.status(HTTP.OK).send(account);
+        } else { // if passwort doesnt match account passwort send back http error
+            console.log("  -> Login unsucessfull for account: ", account.accountName);
+            return res.sendStatus(401);
+        }
+
+    } catch (e) {
+        handleError(e);
+        return res.status(HTTP.INTERNAL_ERROR).send(e);
     }
-
-    if (!account) return res.sendStatus(HTTP.ENTITY_NOT_FOUND);
-
-    if (account.passwort == data.passwort) {
-        console.log("yay")
-        let x = {type: account.type, accountName: account.accountName, organisationId: account.organisationId}
-        delete account.passwort;
-
-        return res.send(account);
-    } else {
-        return res.sendStatus(401);
-    }
-})
+});
 
 /** 
  * EXPERIMENTAL API ENDPOINTS
  */
 
-app.get("/lrpc/createSurvey", async (req, res) => {
-    let client = new LRPC();
-    await client.openConnection();
+// app.get("/lrpc/createSurvey", async (req, res) => {
+//     let client = new LRPC();
+//     await client.openConnection();
     
-    console.log("Connection active:", client.connectionIsActive())
-    try {
-        // await client.listSurveys();
-        // await client.listUsers();
-        // await client.addParticipants('842869', [ {"lastname":"franz","firstname":"niklas","email":"nf.app@icloud.com","attribute_1":"user", "attribute_2":"1"} ]);
-        return res.sendStatus(HTTP.OK);
-    } catch (err) {
-        console.log(err);
-        return res.sendStatus(HTTP.INTERNAL_ERROR);
-    } finally {
-        await client.closeConnection();
-    }
-})
+//     console.log("Connection active:", client.connectionIsActive())
+//     try {
+//         // await client.listSurveys();
+//         // await client.listUsers();
+//         // await client.addParticipants('842869', [ {"lastname":"franz","firstname":"niklas","email":"nf.app@icloud.com","attribute_1":"user", "attribute_2":"1"} ]);
+//         return res.sendStatus(HTTP.OK);
+//     } catch (err) {
+//         console.log(err);
+//         return res.sendStatus(HTTP.INTERNAL_ERROR);
+//     } finally {
+//         await client.closeConnection();
+//     }
+// })
 
 app.get("/lrpc/listParticipants/:surveyId", async (req, res) => {
-    let client = new LRPC();
-    await client.openConnection();
-    
-    console.log("Connection active:", client.connectionIsActive())
+    let client;
     try {
+        client = new LRPC();
+        await client.openConnection();
         let result = await client.listParticipants(req.params.surveyId);
         console.log("result:", result)
         return res.send(result);
@@ -947,13 +1012,18 @@ app.get("/lrpc/listParticipants/:surveyId", async (req, res) => {
     } finally {
         await client.closeConnection();
     }
-})
+});
+
+} catch {
+    console.log(error)
+}
 
 akcoredb
     .sync({alter: true})
     .then(() => {
         app.listen(PORT, async () => {
-             // creating an entry that already exists in the database will result in an error, so we want to catch that error
+            initLogs();
+            // creating an entry that already exists in the database will result in an error, so we want to catch that error
             // this way, we only create that entries when the database is first initialized 
             try { await Organisation.findOrCreate( { where: {organisationId: 1, organisationName: "LSWI-Lehrstuhl" } }); } catch (error) { console.log(error); }
             try { await Organisation.findOrCreate( { where: {organisationId: 2, organisationName: "Marketing-Lehrstuhl" } }); } catch (error) { console.log(error); }
@@ -965,7 +1035,4 @@ akcoredb
 
             console.log('Listening on port localhost:' + PORT+ ". Apache redirects to this from /api/");
         })
-    })
-
-
-
+    });
