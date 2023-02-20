@@ -849,7 +849,6 @@ const Abteilung = akcoredb.define('abteilung', {
     abteilungName: {
         type: DataTypes.STRING,
         allowNull: false,
-        unique: true
     }
 }, {
     timestamps: false
@@ -1289,7 +1288,9 @@ app.put("/projekt/:projektId", async (req, res) => {
 
         var newSurveyIds = []; // array of newly created surveyIds
         for (u of data.umfragenNew) {
-            await client.createSurvey(u.startDate, u.stopDate)
+            let surveyFile = new SurveyFile(u.umfrageStartDate, u.umfrageEndDate, "AK Core Admin", "nifranz@uni-potsdam.de", projekt.projektName, projekt.projektBeschreibung);
+            await surveyFile.createFile(); // creating the file in fs
+            await client.createSurvey(surveyFile.getPathToFile())
             .then( async surveyId => {          
                 await client.activateSurvey(surveyId);
                 await client.activateTokens(surveyId, [1,2]);    
