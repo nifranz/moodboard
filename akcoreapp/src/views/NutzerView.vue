@@ -14,7 +14,7 @@
         <button class="btn btn-outline-primary" @click.prevent="setOrg(selectedOrg)" type="submit">Bestätigen</button>
       </div>
     </form> -->
-    
+    <iframe src="http://141.89.39.93/kibana/app/dashboards?auth_provider_hint=anonymous.anonymous1#/view/a2d37af0-a22d-11ed-8960-8511422d30b9?embed=true&_g=(refreshInterval%3A(pause%3A!t%2Cvalue%3A0)%2Ctime%3A(from%3Anow-15m%2Cto%3Anow))" height="600" width="800"></iframe>
   </div>
 </template>
 
