@@ -134,7 +134,6 @@ class _ETL_Pipeline(object):
                     Department.append(dep)
             pos +=1
 
-
         self.df_KibanaImport_Tab1['ParticipantID'] = self.df_import_short['id']
         self.df_KibanaImport_Tab1['DateSent'] = self.df_import_short['submitdate']
         self.df_KibanaImport_Tab1['Department'] = Department
@@ -221,6 +220,8 @@ class _ETL_Pipeline(object):
         cloud_id=CLOUD_ID,
         api_key=API_KEY,
         )
+
+        client.createIndex()
         df_dict = DataFrame.to_dict('records')
         mycustom = self.generator(df_dict)
         try:
@@ -228,6 +229,3 @@ class _ETL_Pipeline(object):
         except Exception as e:
             print(e)
             pass
-
-
-        

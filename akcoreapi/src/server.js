@@ -1,4 +1,5 @@
 const fs = require('fs/promises')
+const fssync = require('fs')
 const express = require('express')
 const cors = require('cors')
 const bodyParser = require('body-parser')
@@ -8,6 +9,8 @@ const {exec} = require('child_process')
 const uuid = require('uuid')
 // const morgan = require('morgan')
 const connection = require('./connection')
+const replace = require('replace-in-file')
+const { Client } = require('@elastic/elasticsearch')
     /* required ./connection.js' structure:
         const db_name = 'akcoredb';
         const db_username = '*****';
@@ -34,11 +37,102 @@ const ERROR_LOG_PATH = __dirname + "/../logs/error.log"
 const LRPC_LOG_PATH = __dirname + "/../logs/lrpc.log"
 
 function initLogs() {
-    return 
+    return;
     let dateString = (new Date(Date.now()).toString()).split(" ");
     let timeString = dateString[1] + " " + dateString[2] + " " + dateString[3] + " " + dateString[4] + " => "
     
     fs.writeFile(ERROR_LOG_PATH, timeString + "Server has been started", function(){})
+}
+
+class SurveyFile {
+    constructor(umfrageStartDate, umfrageEndDate, adminName, adminEmail, umfrageTitel, umfrageBeschreibung) {
+        this.umfrageStartDate = umfrageStartDate;
+        this.umfrageEndDate = umfrageEndDate;
+        this.adminName = adminName;
+        this.adminEmail = adminEmail;
+        this.umfrageTitel = umfrageTitel;
+        this.umfrageBeschreibung = umfrageBeschreibung;
+
+        this.filePath = __dirname + "/../assets/limesurvey/tmp." + uuid.v4() + "_survey-import-file_" + ".lss";
+        this.created = false;
+    }
+
+    async createFile() {
+        if (this.created) throw new Error("File has already been created!");
+        let sourceSurveyFilePath = __dirname + '/../assets/limesurvey/base_survey_2.lss'
+        let sourceSurveyFile = await fs.readFile(sourceSurveyFilePath, { encoding: 'UTF-8' });
+        if(!sourceSurveyFile) throw new Error("Some error reading the file");
+
+        // create new temporary import lss-file
+        
+        await fs.writeFile(this.filePath, sourceSurveyFile, function(){}) 
+
+        // replacing survey properties in temporary file
+        let replacements = {
+            "replaceStartDate": {
+                files: this.filePath,
+                from: /<startdate>.*<\/startdate>/,
+                to: "<startdate><![CDATA["+ this.umfrageStartDate + " 00:00:00" +"]]></startdate>",
+            },
+            "replaceEndDate": {
+                files: this.filePath,
+                from: /<expires>.*<\/expires>/,
+                to: "<expires><![CDATA["+ this.umfrageEndDate + " 23:59:59" +"]]></expires>",
+            },
+            "replaceAdminName": {
+                files: this.filePath,
+                from: /<admin>.*<\/admin>/,
+                to: "<admin><![CDATA["+ this.adminName +"]]></admin>",
+            },
+            "replaceAdminEmail": {
+                files: this.filePath,
+                from: /<adminemail>.*<\/adminemail>/,
+                to: "<adminemail><![CDATA["+ this.adminEmail +"]]></adminemail>",
+            },
+            "replaceUmfrageTitel": {
+                files: this.filePath,
+                from: /<surveyls_title>.*<\/surveyls_title>/,
+                to: "<surveyls_title><![CDATA["+ "Stimmungsbarometer für Projekt " + this.umfrageTitel +"]]></surveyls_title>",
+            },
+            "replaceUmfrageBeschreibung": {
+                files: this.filePath,
+                from: /<surveyls_description>.*<\/surveyls_description>/,
+                to: "<surveyls_description><![CDATA["+ this.umfrageBeschreibung +"]]></surveyls_description>",
+            }
+        }
+        for (let replacement of Object.values(replacements)) {
+            console.log(replacement.files);
+            await replace(replacement);
+        }
+
+        this.created = true;
+    }
+
+    getPathToFile() {
+        if (this.destroyed || !this.created) return console.log("No file has been created or it has already been destroyed.");
+        return this.filePath;
+    }
+
+    async destroyFile() {
+        if (!this.created) {
+            throw new Error("No file has been created yet. No file was destroyed.");
+        }
+        if (this.destroyed) {
+            throw new Error("File has already been destroyed");
+        }
+        await fs.unlink(this.filePath);
+        this.destroyed = true;
+    }
+}
+
+
+function getToday() {
+    let d = new Date;
+    let month = d.getMonth() + 1;
+    if (month < 10) {
+        month = "0" + month;
+    } 
+    return '' + `${d.getFullYear()}-${month}-${d.getDate()}`
 }
 
 function handleError(error) {
@@ -48,10 +142,8 @@ function handleError(error) {
     fs.appendFile(ERROR_LOG_PATH, timeString + error + "\r\n", (error) => {});
 }
 
-
-
 function logLRPC(id, response) {
-    if (!LRPC_LOGGING) return
+    if (!LRPC_LOGGING) return;
     let dateString = (new Date(Date.now()).toString()).split(" ");
     let timeString = dateString[1] + " " + dateString[2] + " " + dateString[3] + " " + dateString[4] + " => "
     message = "LRPC-Response for '" + id + "' :: result: " + JSON.stringify(response.result) + " :: error " + JSON.stringify(response.error)
@@ -79,8 +171,274 @@ async function lrpc_req(id, method, params) {
     return response.data;
 }
 
+class ESAPI {
+    #apiKey = 'eDdSV1o0WUJXUzk3dlFqZi1HY2U6M1R4ZHJEcjFTT3lfTV8teU1LSGM1UQ==';
+    #esNode = 'https://localhost:9200';
+    #client;
+
+    constructor() {
+        this.#client = new Client({
+            node: this.#esNode,
+            auth: {
+              apiKey: this.#apiKey
+            },
+            tls: {
+                ca: fssync.readFileSync(__dirname+'/../pipeline/http_ca.crt'),
+                rejectUnauthorized: false
+              }
+        });
+    }
+    // async #apiHTTPRequest(method, route, data) {
+    //     let retdata;
+    //     await axios.request({
+    //         method: method,
+    //         url: 'http://localhost:5601/kibana/' + route,
+    //         headers: {
+    //             'Content-Type': 'application/json',
+    //             'kbn-xsrf': 'true',
+    //             'Authorization': 'ApiKey eDdSV1o0WUJXUzk3dlFqZi1HY2U6M1R4ZHJEcjFTT3lfTV8teU1LSGM1UQ=='
+    //         },
+    //         data: data,
+    //     }).then(function (response) {
+    //         console.log(response.data);
+    //         retdata = response.data;
+    //     })
+    //     .catch(function (error) {
+    //         console.error(error);
+    //     });
+    //     return retdata;
+    // }   
+
+    // async addParticipantResponse(projektId, participantTokenId, index, document) {
+    //     await this.#client.index({
+    //         index: 'akcore_'+projektId+'_'+index,
+    //         id:participantTokenId,
+    //         refresh: true,
+    //         document: {
+    //             "SuveryID": 99,
+    //             "Department": "Zentrallogistik",
+    //             "ParticipantID": 1,
+    //             "Role": "Key-User",
+    //             "PartParticipant": "yes"
+    //           }
+    //       })
+    // }
+
+    //create responses index
+    async createProjektIndices(projektId) {
+        await this.#client.indices.create({
+            "index": "akcore_"+projektId+"_responses",
+            "mappings": {
+              "_meta": {
+                "created_by": "file-data-visualizer"
+              },
+              "properties": {
+                "AvgA1": {
+                  "type": "double"
+                },
+                "AvgA3": {
+                  "type": "double"
+                },
+                "AvgAll": {
+                  "type": "double"
+                },
+                "Complete": {
+                  "type": "keyword"
+                },
+                "DateSent": {
+                  "type": "date",
+                  "format": "iso8601"
+                },
+                "Department": {
+                  "type": "keyword"
+                },
+                "Duration": {
+                  "type": "long"
+                },
+                "M1": {
+                  "type": "keyword"
+                },
+                "MO1": {
+                  "type": "keyword"
+                },
+                "MQ1": {
+                  "type": "long"
+                },
+                "O1": {
+                  "type": "keyword"
+                },
+                "O2": {
+                  "type": "keyword"
+                },
+                "O3": {
+                  "type": "keyword"
+                },
+                "O4": {
+                  "type": "keyword"
+                },
+                "PartParticipant": {
+                  "type": "keyword"
+                },
+                "ParticipantID": {
+                  "type": "long"
+                },
+                "Q1": {
+                  "type": "long"
+                },
+                "Q10": {
+                  "type": "long"
+                },
+                "Q2": {
+                  "type": "long"
+                },
+                "Q3": {
+                  "type": "long"
+                },
+                "Q4": {
+                  "type": "long"
+                },
+                "Q5": {
+                  "type": "long"
+                },
+                "Q6": {
+                  "type": "long"
+                },
+                "Q7": {
+                  "type": "long"
+                },
+                "Q8": {
+                  "type": "long"
+                },
+                "Q9": {
+                  "type": "long"
+                },
+                "R1": {
+                  "type": "long"
+                },
+                "R2": {
+                  "type": "long"
+                },
+                "R3": {
+                  "type": "long"
+                },
+                "Role": {
+                  "type": "keyword"
+                },
+                "SurveyID": {
+                  "type": "long"
+                },
+                "column1": {
+                  "type": "long"
+                }
+              }
+            }
+          })
+          //create pie index
+          await this.#client.indices.create({
+            "index": "akcore_"+projektId+"_pie",
+            "mappings": {
+                "_meta": {
+                  "created_by": "file-data-visualizer"
+                },
+                "properties": {
+                  "Department": {
+                    "type": "keyword"
+                  },
+                  "ParticipantID": {
+                    "type": "long"
+                  },
+                  "Percent": {
+                    "type": "long"
+                  },
+                  "Role": {
+                    "type": "keyword"
+                  },
+                  "Rx": {
+                    "type": "long"
+                  },
+                  "SurveyID": {
+                    "type": "long"
+                  }
+                }
+              }
+          })
+          // create count index
+          await this.#client.indices.create({
+            "index": "akcore_"+projektId+"_count",
+            "mappings": {
+                "_meta": {
+                  "created_by": "file-data-visualizer"
+                },
+                "properties": {
+                  "Category": {
+                    "type": "long"
+                  },
+                  "CountA1": {
+                    "type": "long"
+                  },
+                  "CountA3": {
+                    "type": "long"
+                  },
+                  "CountAll": {
+                    "type": "long"
+                  },
+                  "Department": {
+                    "type": "keyword"
+                  },
+                  "Role": {
+                    "type": "keyword"
+                  },
+                  "SurveyID": {
+                    "type": "long"
+                  }
+                }
+              }
+            })
+    }
+    
+    async getIndex() {
+        let result = await this.#client.search({
+            index: 'akcore-projekt_01_umfr_01_responses',
+            query: {
+              match: {
+                SuveryID: 99
+              }
+            }
+          })
+        
+        console.log(result.hits.hits)
+    }
+
+    async setIndexReadOnly(index) {
+        const indexName ="akcore_dev_"+index;
+        const settings = {
+            index: {
+                blocks: {
+                    read_only: false
+                }
+            }
+        };
+        await this.#client.indices.putSettings({ "index": indexName, body: settings });
+    }
+
+    // async copyIndecesToProjektSpace(projektId) {
+    //     await this.#client.indices.clone({
+    //         "index": 'akcore_dev_responses',
+    //         "target": 'akcore_'+projektId+"_responses"
+    //     });
+    //     await this.#client.indices.clone({
+    //         "index": 'akcore_dev_count',
+    //         "target": 'akcore_'+projektId+"_count"
+    //     });
+    //     await this.#client.indices.clone({
+    //         "index": 'akcore_dev_pie',
+    //         "target": 'akcore_'+projektId+"_pie"
+    //     });
+    // }
+}
+
 /**
- * @class Class representing an interface to the LimeSurvey RPC API (documented as LRPC)
+ * @class Class representing a communication interface to the LimeSurvey RPC API 
  */
 class LRPC {
     #sessionKey;
@@ -107,6 +465,12 @@ class LRPC {
         } catch (error) {
             console.log(error);
         }
+    }
+
+    isActive() {
+        console.log(this.#sessionKey);
+        return this.#activeConnection;
+
     }
     /** 
      * Closes the connection to the LRPC 
@@ -165,25 +529,96 @@ class LRPC {
      * @param stopDate The stopDate of the survey
      * @returns {Promise} Promise object, represents the surveyId of the created survey
      * */
-    async createSurvey(startDate, stopDate) {
+    async createSurvey(surveyFilePath) {
         return new Promise(async (resolve, reject)  => {
             try {
                 if (!this.#activeConnection) {
                     throw new Error("No active connection! Establish a connection first by calling openConnection()!");
                 }    
 
-                var surveyFile = await fs.readFile(__dirname + '/../assets/limesurvey/base_survey.lss', { encoding: 'base64' });
+                var surveyFile = await fs.readFile(surveyFilePath, { encoding: 'base64' });
                 if(!surveyFile) throw new Error("Some error reading the file");
     
                 let data = await lrpc_req('import_survey', 'import_survey', [this.#sessionKey, surveyFile, 'lss']);
                 if (data.error) throw new Error (data.error);
                 let surveyId = data.result;
-                console.log("Survey created! SurveyId: " + surveyId);
+                // console.log("Survey created! SurveyId: " + surveyId);
                 resolve(surveyId);
              } catch(error) {
                 reject(error);
              }
         })
+    }
+    
+    async activateSurvey(surveyId) {
+        console.log("activate");
+        try {
+            if (!this.#activeConnection) {
+                throw new Error("No active connection! Establish a connection first by calling openConnection()!");
+            }
+            let data = await lrpc_req('activate survey, survey ' + surveyId, 'activate_survey', [this.#sessionKey, surveyId]);
+            if (data.error) throw new Error (data.error);
+            // console.log("Survey activated; sid:", surveyId);
+         } catch(error) {
+            // console.error("Survey could not be activated; sid:", surveyId);
+            throw new Error(error);
+         }
+    }
+
+    async mailRegisteredParticipants(surveyId) {
+        try {
+            if (!this.#activeConnection) {
+                throw new Error("No active connection! Establish a connection first by calling openConnection()!");
+            }
+            let data = await lrpc_req('invite participants, survey ' + surveyId, 'mail_registered_participants', [this.#sessionKey, surveyId, [/*use default conditions*/]]);
+            if (data.error) throw new Error (data.error);
+            // console.log("Participant Table initialized for survey ", surveyId);
+         } catch(error) {
+            // console.error("Participant Table could not be initialized for survey ", surveyId);
+            throw new Error(error);
+         }
+    }
+
+    async mailRegisteredParticipant(surveyId, participantToken) {
+        try {
+            if (!this.#activeConnection) {
+                throw new Error("No active connection! Establish a connection first by calling openConnection()!");
+            }
+            let data = await lrpc_req('invite participants, survey ' + surveyId, 'mail_registered_participants', [this.#sessionKey, surveyId, participantToken]);
+            if (data.error) throw new Error (data.error);
+            // console.log("Participant Table initialized for survey ", surveyId);
+         } catch(error) {
+            // console.error("Participant Table could not be initialized for survey ", surveyId);
+            throw new Error(error);
+         }
+    }
+
+    async inviteParticipants(surveyId, participantTokens, pendingOnly) {
+        try {
+            if (!this.#activeConnection) {
+                throw new Error("No active connection! Establish a connection first by calling openConnection()!");
+            }
+            let data = await lrpc_req('invite participants, survey ' + surveyId, 'invite_participants', [this.#sessionKey, surveyId, participantTokens, pendingOnly]);
+            if (data.error) throw new Error (data.error);
+            // console.log("participants invited ", surveyId);
+         } catch(error) {
+            // console.error("Participants not invited ", surveyId);
+            throw new Error(error);
+         }
+    }
+
+    async remindParticipants(surveyId) {
+        try {
+            if (!this.#activeConnection) {
+                throw new Error("No active connection! Establish a connection first by calling openConnection()!");
+            }
+            let data = await lrpc_req('remind participants, survey ' + surveyId, 'remind_participants', [this.#sessionKey, surveyId]);
+            if (data.error) throw new Error (data.error);
+            // console.log("participants invited ", surveyId);
+         } catch(error) {
+            // console.error("Participants not invited ", surveyId);
+            throw new Error(error);
+         }
     }
 
     async activateTokens(surveyId, attributeData) {
@@ -194,9 +629,9 @@ class LRPC {
             }
             let data = await lrpc_req('activate tokens, survey ' + surveyId, 'activate_tokens', [this.#sessionKey, surveyId/*, attributeData*/]);
             if (data.error) throw new Error (data.error);
-            console.log("Participant Table initialized for survey ", surveyId);
+            // console.log("Participant Table initialized for survey ", surveyId);
          } catch(error) {
-            console.error("Participant Table could not be initialized for survey ", surveyId);
+            // console.error("Participant Table could not be initialized for survey ", surveyId);
             throw new Error(error);
          }
     }
@@ -209,11 +644,11 @@ class LRPC {
 
             var data = await lrpc_req('add participant, survey ' + surveyId, 'add_participants', [this.#sessionKey, surveyId, participantData]); // not adding participant data. no longer used, since pipeline adds this to the data.
             if (data.error) throw new Error (data.error);
-            console.log(participantData.length, "participant(s) added for survey", surveyId);
+            // console.log(participantData.length, "participant(s) added for survey", surveyId);
             return (data.result[0].token);
          } catch(error) {
             console.error(data)
-            console.error("Participant could not be added for survey ", surveyId);
+            // console.error("Participant could not be added for survey ", surveyId);
             if (error.response) {
                 // The request was made and the server responded with a status code
                 // that falls out of the range of 2xx
@@ -234,6 +669,8 @@ class LRPC {
     }
 
     async deleteSurvey(surveyId) {
+        console.log("deleting");
+        if(!surveyId) return "No surveyId specified."
         try {
             if (!this.#activeConnection) {
                 throw new Error("No active connection! Establish a connection first by calling openConnection()!");
@@ -260,6 +697,37 @@ class LRPC {
         } catch (error) {
             console.log(error);
         }  
+    }
+
+    async updateParticipant(surveyId, participantToken, participantData) {
+        try {
+            if (!this.#activeConnection) {
+                throw new Error("No active connection! Establish a connection first by calling openConnection()!");
+            }
+
+            var data = await lrpc_req('set_participant_properties, survey ' + surveyId, 'set_participant_properties', [this.#sessionKey, surveyId, participantToken, participantData]); // not adding participant data. no longer used, since pipeline adds this to the data.
+            if (data.error) throw new Error (data.error);
+            // console.log(participantData.length, "participant(s) added for survey", surveyId);
+            return (data.result[0].token);
+         } catch(error) {
+            console.error(data)
+            // console.error("Participant could not be added for survey ", surveyId);
+            if (error.response) {
+                // The request was made and the server responded with a status code
+                // that falls out of the range of 2xx
+                console.log(error.response.data);
+                console.log(error.response.status);
+                console.log(error.response.headers);
+              } else if (error.request) {
+                // The request was made but no response was received
+                // `error.request` is an instance of XMLHttpRequest in the browser and an instance of
+                // http.ClientRequest in node.js
+                console.log(error.request);
+              } else {
+                // Something happened in setting up the request that triggered an Error
+                console.log('Error', error.message);
+              }
+        }
     }
 
     // async updateParticipant(surveyId, participantToken, attributeData) {
@@ -564,11 +1032,11 @@ app.put("/mitarbeiter", async (req, res) => {
             console.log(mitarbeiter.umfrages);
             console.log(mitarbeiter.projekts);
 
-            if ( mitarbeiter.abteilungId != data.abteilungId ) {
+            if ( mitarbeiter.mitarbeiterEmail != data.mitarbeiterEmail || mitarbeiter.mitarbeiterName != data.mitarbeiterName ) {
                 let client = new LRPC();
                 await client.openConnection();
                 for (umfr of mitarbeiter.umfrages) {
-                    await client.updateParticipant(umfr.umfrageLimesurveyId, umfr.fuelltAus.mitarbeiterLimesurveyTokenId, []);
+                    await client.updateParticipant(umfr.umfrageLimesurveyId, umfr.fuelltAus.mitarbeiterLimesurveyTokenId, ["email = test",]);
                 }                
                 await client.closeConnection();
             }
@@ -611,7 +1079,6 @@ app.delete("/mitarbeiter/:mitarbeiterId", async (req, res)  => {
 /** 
  * API ENDPOINTS FOR PROJEKTE 
  */
-
 app.get("/projekte/:organisationId", async (req, res) => {
     let organisationId = req.params.organisationId;
     console.log("GET /projekte/"+organisationId);
@@ -685,20 +1152,25 @@ app.post("/projekt", async (req, res) => {
         // Opening a connection to LimeSurvey RPC
         client = new LRPC();
         await client.openConnection();
+        console.log(client.isActive());
 
-        let surveyIds = []; // array of created surveyIds
+        // let surveyIds = []; // array of created surveyIds
         // adding all umfragen to projekt
         for (u of data.umfragen) {
-            await client.createSurvey(u.startDate, u.stopDate)
-            .then( async surveyId => {          
-                await client.activateTokens(surveyId, [1,2]);
-                surveyIds.push(surveyId); 
+            let surveyFile = new SurveyFile(u.umfrageStartDate, u.umfrageEndDate, "AK Core Admin", "nifranz@uni-potsdam.de", projekt.projektName, projekt.projektBeschreibung);
+            await surveyFile.createFile(); // creating the file in fs
+            await client.createSurvey(surveyFile.getPathToFile())
+            .then( async surveyId => {     
+                await client.activateSurvey(surveyId);     
+                await client.activateTokens(surveyId, [1,2]);                
+                // surveyIds.push(surveyId); 
                 u.umfrageLimesurveyId = surveyId;
                 let umfrage = await Umfrage.create(u);
                 await projekt.addUmfrage(umfrage);
             }).catch(error => {
-                throw new Error(error);
+                handleError(error);
             });
+            surveyFile.destroyFile();
         }
         // adding all teilnehmer to projekt
         for (teiln of data.teilnehmer) {
@@ -743,7 +1215,13 @@ app.post("/projekt", async (req, res) => {
                 // );
             }
         }
-        console.log("returning HTTP.CREATED");
+        // create kibana spaces and indices
+
+        let esClient = new ESAPI();
+        await createKibanaSpace(projekt.projektId, projekt.projektName);
+        await esClient.createProjektIndices(projekt.projektId);
+
+        console.log("   -> Creating Project successfull");
         return res // the response
             .setHeader('Location', `/projekt/${projekt.projektId}`) // setting location header for the response to the client
             .set( { 'Access-Control-Expose-Headers': 'location', } ) // exposing location header
@@ -813,6 +1291,7 @@ app.put("/projekt/:projektId", async (req, res) => {
         for (u of data.umfragenNew) {
             await client.createSurvey(u.startDate, u.stopDate)
             .then( async surveyId => {          
+                await client.activateSurvey(surveyId);
                 await client.activateTokens(surveyId, [1,2]);    
                 newSurveyIds.push(""+surveyId); 
                 u.umfrageLimesurveyId = surveyId;
@@ -906,10 +1385,20 @@ app.delete('/projekt/:projektId', async(req,res) => {
         await client.openConnection();
     
         for (umfr of projektUmfragen) {
+            console.log("lsid:",umfr.umfrageLimesurveyId);
             await client.deleteSurvey(umfr.umfrageLimesurveyId);
+            await umfr.destroy();
         }
+        
+        // deleted related kibana space
+        await deleteKibanaSpace(projekt.projektId);
 
+        // delete related kibana indices
+
+
+        // delete projekt from akcoredb
         await projekt.destroy();
+        
         return res.sendStatus(HTTP.OK);
     } catch (error) {
         handleError(error);
@@ -960,7 +1449,7 @@ app.post("/abteilung/", async(req, res) => {
 });
 
 app.delete("/abteilung/:abteilungId", async (req, res)  => {  
-    console.log("DELETE /abteilung");j
+    console.log("DELETE /abteilung");
     try {
         // DELETE a mitarbeiter for specific mitarbeiterId
         let abteilung = await Abteilung.findOne({
@@ -990,11 +1479,16 @@ app.post("/verifyLogin", async (req, res) => {
 
     try {        
         const ACCOUNTS = [
-            {type: "admin", accountName: "admin1", passwort: "passwort", organisationId: 2},
-            {type: "admin", accountName: "admin2", passwort: "passwort", organisationId: 2},
-            {type: "cm", accountName: "changeManager1", passwort: "passwort", organisationId: 2},
-            {type: "cm", accountName: "changeManager2", passwort: "passwort", organisationId: 1},
-            {type: "superadmin", accountName: "dev", passwort: "passwort", organisationId: 1}
+            {type: "suadm", accountName: "dev", passwort: "passwort", organisationId: 1},
+
+            {type: "adm", accountName: "dkotarski", passwort: "lswi_test", organisationId: 2},
+            {type: "adm", accountName: "thammes", passwort: "lswi_test", organisationId: 2},
+
+            {type: "cm", accountName: "bbender", passwort: "lswi_test", organisationId: 2},
+            {type: "cm", accountName: "jgonnermann", passwort: "lswi_test", organisationId: 2},
+            {type: "cm", accountName: "cthim", passwort: "lswi_test", organisationId: 2},
+            {type: "cm", accountName: "ngronau", passwort: "lswi_test", organisationId: 2},
+
         ]
 
         let data = req.body; // get data from request body
@@ -1026,27 +1520,33 @@ app.post("/verifyLogin", async (req, res) => {
 });
 
 app.get("/inviteParticipants", async(req, res) => {
-    // exec.exec('ls -la', (error, stdout, stderr) => {
-    //     if (error) {
-    //         console.log('error:', error.message);
-    //         return res.sendStatus(HTTP.INTERNAL_ERROR);
-    //     }
-    //     if (stderr) {
-    //         console.log('stderr:', stderr);
-    //         return res.sendStatus(HTTP.INTERNAL_ERROR);
-    //     }
-    //     console.log("stdout:", stdout)
-    //     return res.sendStatus(HTTP.OK);
-    // })
-
-
+    let client = new LRPC();
+    await client.openConnection();
+    let today = getToday();
+    let umfragen = await Umfrage.findAll({
+        include: {model:Mitarbeiter}
+    });
+    for (umfr of umfragen) {       
+        if (umfr.umfrageStartDate <= today && umfr.umfrageEndDate >= today) {
+            let participantTokens = [];
+            for (ma of umfr.mitarbeiters) {
+                participantTokens.push(ma.fuelltAus.mitarbeiterLimesurveyTokenId);
+            }
+            console.log(umfr.umfrageLimesurveyId,participantTokens);
+            // client.inviteParticipants(umfr.umfrageLimesurveyId);
+            await client.remindParticipants(umfr.umfrageLimesurveyId);
+            await client.mailRegisteredParticipants(umfr.umfrageLimesurveyId);
+        }
+    }
+    await client.closeConnection();
+    return res.sendStatus(HTTP.OK);
 });
 
 app.get("/triggerPipe/:surveyId/:tokenId/:answerId", async(req, res) => {    
     let surveyId = req.params.surveyId;
     let tokenId = req.params.tokenId;
     let answerId = req.params.answerId;
-    console.log("GET /startPipe/"+surveyId+"/"+tokenId+"/"+answerId);
+    console.log("GET /triggerPipe/"+surveyId+"/"+tokenId+"/"+answerId);
 
     // get mitarbeiter data for pipeline ingestion
     let umfrage = await Umfrage.findOne({
@@ -1075,15 +1575,18 @@ app.get("/triggerPipe/:surveyId/:tokenId/:answerId", async(req, res) => {
     // create a jsonfile to read from python script with "json" variable as file content
     let filePath = __dirname + "/../pipeline/tmp." + uuid.v4() + "_survey_" + surveyId + "_mitarbeiter-data.json"
     await fs.writeFile(filePath, JSON.stringify(json), function(){})
+    console.log("ya")
 
     exec(`python3 ${__dirname}/../pipeline/pipe.py ${filePath} `, async (error, stdout, stderr) => {
         if (error) {
             console.log('error:', error.message);
+            await fs.unlink(filePath);
             return res.sendStatus(HTTP.INTERNAL_ERROR);
         }
         console.log("###########################\nExecuting python script...")
         if (stderr) {            
             console.log('stderr:', stderr);
+            await fs.unlink(filePath);
             return res.sendStatus(HTTP.INTERNAL_ERROR);
         }
         console.log("stdout:", stdout);
@@ -1096,7 +1599,6 @@ app.get("/triggerPipe/:surveyId/:tokenId/:answerId", async(req, res) => {
 /** 
  * EXPERIMENTAL API ENDPOINTS
  */
-
 app.get("/lrpc/listParticipants/:surveyId", async (req, res) => {
     let client;
     try {
@@ -1113,20 +1615,251 @@ app.get("/lrpc/listParticipants/:surveyId", async (req, res) => {
     }
 });
 
-app.get("/readSurvey", async (req, res) => {
+app.get("/readSurvey/:surveyId", async (req, res) => {
+    let surveyId = req.params.surveyId;
+    console.log("GET /readSurvey/:surveyId")
     try {
-        var surveyFile = await fs.readFile(__dirname + '/../assets/limesurvey/base_survey.lss', { encoding: 'UTF-8' });
-        if(!surveyFile) throw new Error("Some error reading the file");
-        console.log(surveyFile)
-        res.send(surveyFile)
+        var surveyBaseFile = await fs.readFile(__dirname + '/../assets/limesurvey/base_survey_2.lss', { encoding: 'UTF-8' });
+        if(!surveyBaseFile) throw new Error("Some error reading the file");
+
+        // create new temporary import lss-file
+        let filePath = __dirname + "/../assets/limesurvey/tmp." + uuid.v4() + "_survey-import-file_sid-" + surveyId + ".lss"
+        await fs.writeFile(filePath, surveyBaseFile, function(){}) 
+
+        // replacing survey properties in temporary file
+        let umfrageStartDate = "23-02-20";
+        let umfrageEndDate = "23-02-27";
+        let adminName = "AK-Core Admin ye"
+        let adminEmail = "nifranz@uni-potsdam.de ye"
+        let umfrageTitel = "Stimmungsbarometer yx"
+        let umfrageBeschreibung = "Beschreibung lets go"
+
+        let replacements = {
+            "replaceStartDate": {
+                files: filePath,
+                from: /<startdate>.*<\/startdate>/,
+                to: "<startdate><![CDATA["+ umfrageStartDate + " 00:00:00" +"]]></startdate>",
+            },
+            "replaceEndDate": {
+                files: filePath,
+                from: /<expires>.*<\/expires>/,
+                to: "<expires><![CDATA["+ umfrageEndDate + " 23:59:59" +"]]></expires>",
+            },
+            "replaceAdminName": {
+                files: filePath,
+                from: /<admin>.*<\/admin>/,
+                to: "<admin><![CDATA["+ adminName +"]]></admin>",
+            },
+            "replaceAdminEmail": {
+                files: filePath,
+                from: /<adminemail>.*<\/adminemail>/,
+                to: "<adminemail><![CDATA["+ adminEmail +"]]></adminemail>",
+            },
+            "replaceUmfrageTitel": {
+                files: filePath,
+                from: /<surveyls_title>.*<\/surveyls_title>/,
+                to: "<surveyls_title><![CDATA["+ umfrageTitel +"]]></surveyls_title>",
+            },
+            "replaceUmfrageBeschreibung": {
+                files: filePath,
+                from: /<surveyls_description>.*<\/surveyls_description>/,
+                to: "<surveyls_description><![CDATA["+ umfrageBeschreibung +"]]></surveyls_description>",
+            }
+        }
+        for (let replacement of Object.values(replacements)) {
+            await replace(replacement);
+        }
+
+        await fs.unlink(filePath); // deleting temporary file
+        return res.sendStatus(HTTP.OK);        
+
     } catch (e) {
         console.error(e)
         res.sendStatus(HTTP.INTERNAL_ERROR);
     }
 });
 
+app.get("/kibanaApiCall/:method", async (req, res) => {
+    const response = await axios.get("http://localhost:5601/kibana/api/"+req.params.method, {
+        headers: {
+        'Content-Type': 'application/json',
+        'kbn-xsrf': 'true',
+        'Authorization': 'ApiKey eDdSV1o0WUJXUzk3dlFqZi1HY2U6M1R4ZHJEcjFTT3lfTV8teU1LSGM1UQ=='
+        },
+    });
+    console.log(response.data.error);
+    console.log(response.data)
+    return res.sendStatus(HTTP.OK);
+});
 
+app.get("/kibanaApiCallDev", async (req, res) => {
+    axios.request({
+        method: 'GET',
+        url: 'http://localhost:5601/kibana/api/spaces/space',
+        headers: {
+            'Content-Type': 'application/json',
+            'kbn-xsrf': 'true',
+            'Authorization': 'ApiKey eDdSV1o0WUJXUzk3dlFqZi1HY2U6M1R4ZHJEcjFTT3lfTV8teU1LSGM1UQ=='
+        },
+         data: {
+                "id": "source",
+                "name": "sourcespace",
+         }
+    }).then(function (response) {
+        console.log(response.data);
+    })
+    .catch(function (error) {
+        console.error(error);
+    });
+    return res.sendStatus(HTTP.OK);
+});
 
+async function deleteKibanaSpace(projektId) {
+    await axios.request({
+        method: 'DELETE',
+        url: 'http://localhost:5601/kibana/api/spaces/space/'+projektId,
+        headers: {
+            'Content-Type': 'application/json',
+            'kbn-xsrf': 'true',
+            'Authorization': 'ApiKey eDdSV1o0WUJXUzk3dlFqZi1HY2U6M1R4ZHJEcjFTT3lfTV8teU1LSGM1UQ=='
+        }
+    }).then(function (response) {
+        console.log(response.data);
+    })
+    .catch(function (error) {
+        console.error(error);
+        return null;
+    });
+}
+
+app.get("/kibDeleteSpace", async (req, res) => {
+    await deleteKibanaSpace("projekt0123");
+    res.sendStatus(HTTP.OK);
+})
+
+async function createKibanaSpace(projektId, projektName) {
+    projektId = projektId + "";
+    // let projId = "proj1";
+    // let projektName = "ERP System"
+    let log = false;
+
+    // creating new kibana space
+    await axios.request({
+        method: 'POST',
+        url: 'http://localhost:5601/kibana/api/spaces/space',
+        headers: {
+            'Content-Type': 'application/json',
+            'kbn-xsrf': 'true',
+            'Authorization': 'ApiKey eDdSV1o0WUJXUzk3dlFqZi1HY2U6M1R4ZHJEcjFTT3lfTV8teU1LSGM1UQ=='
+        },
+         data: {
+                "id": projektId+"",
+                "name": projektName,
+         }
+    }).then(function (response) {
+        if (log) console.log(response.data);
+    })
+    .catch(function (error) {
+        console.error(error);
+        return null;
+    });
+
+    // setting moodboard object for reference in kibana
+    let moodboardSourceObject = {
+        id: '66a487c9-6517-445b-85be-f37890b62af2',
+        type: 'dashboard'
+    }
+
+    // copying moodboard object form kibana space "source" to new projekt space
+    await axios.request({
+        method: 'POST',
+        url: 'http://localhost:5601/kibana/s/source/api/spaces/_copy_saved_objects',
+        headers: {
+            'Content-Type': 'application/json',
+            'kbn-xsrf': 'true',
+            'Authorization': 'ApiKey eDdSV1o0WUJXUzk3dlFqZi1HY2U6M1R4ZHJEcjFTT3lfTV8teU1LSGM1UQ=='
+        },
+         data: {
+            spaces: [projektId],
+            objects: [moodboardSourceObject],
+            includeReferences: true
+         }
+    }).then(function (response) {
+        if (log) console.log(response.data[projektId]);
+    })
+    .catch(function (error) {
+        console.error(error);
+        return null;
+    });
+
+    // get dataview id of the projekt-dataview used for the moodboard in the new space
+    let dataviewId;
+    await axios.request({
+        method: 'GET',
+        url: 'http://localhost:5601/kibana/s/'+projektId+'/api/data_views',
+        headers: {
+            'Content-Type': 'application/json',
+            'kbn-xsrf': 'true',
+            'Authorization': 'ApiKey eDdSV1o0WUJXUzk3dlFqZi1HY2U6M1R4ZHJEcjFTT3lfTV8teU1LSGM1UQ=='
+        },
+    }).then(function (response) {
+        for (dataview of response.data["data_view"]) {
+            if (dataview.name == "AKCORE_DEV") {
+                dataviewId = dataview.id;
+                break;
+            }
+        }
+        if (log) console.log(response.data);
+    })
+    .catch(function (error) {
+        console.error(error);
+        return null;
+    });
+
+    // update projekt-dataview properties "name" and "title". the new title now references the correct projekt indeces, rather the old source indeces.
+    await axios.request({
+        method: 'POST',
+        url: 'http://localhost:5601/kibana/s/'+projektId+'/api/data_views/data_view/'+dataviewId,
+        headers: {
+            'Content-Type': 'application/json',
+            'kbn-xsrf': 'true',
+            'Authorization': 'ApiKey eDdSV1o0WUJXUzk3dlFqZi1HY2U6M1R4ZHJEcjFTT3lfTV8teU1LSGM1UQ=='
+        },
+         data: {
+            // "refresh_fields": true,
+            "data_view": {
+                "title": "akcore_"+projektId+"_*",
+                "name": "akcore_"+projektId+"_dataview"
+            }
+         }
+    }).then(function (response) {
+        if (log) console.log(response.data);
+    })
+    .catch(function (error) {
+        console.error(error);
+        return null;
+    });
+
+    return projektId;
+}
+
+app.get("/pipeTest", async (req, res) => {
+    
+    let projektId = "projekt0123";
+    let projektName = "ERP System";
+
+    let client = new ESAPI();
+    await createKibanaSpace(projektId, projektName);
+    await client.createProjektIndices(projektId);
+    // await client.setIndexReadOnly("count");
+    // await client.setIndexReadOnly("pie");
+    // await client.setIndexReadOnly("responses");
+    
+
+    // await client.copyIndecesToProjektSpace(projektId);
+    
+    return res.sendStatus(HTTP.OK);
+})
 
 akcoredb
     .sync({})
