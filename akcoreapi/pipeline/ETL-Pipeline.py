@@ -10,17 +10,51 @@ import json
 from _ETL_Pipeline import _ETL_Pipeline
 from elasticsearch import Elasticsearch
 
+url = "http://141.89.39.93/index.php/admin/remotecontrol"
+username = "lukas"
+password = "1OdLHT9oYnZW"
 test_sid = 552287
 #sid = int(sys.argv[1])
 #Kibana_Index = int(sys.argv[2])
 
-ETL_Pipe = _ETL_Pipeline()
+Parameter =  {
+    'projektId' : "Test_Projekt_ID",
+    'surveyData': 
+    { 
+        'surveyId': 172963,
+        'surveyStartDate': '2023-01-01',
+        'surveyEndDate': '2023-03-31'
+    },
+    'teilnehmerData':
+    {
+        'azTHjegIGs8UrB4':
+        {
+            'participantID': "Test_ParticipantID_1",
+            'rolle': 'Change-Manager', 
+            'abteilung': 'Verkauf'
+        } ,
+        'Xy62wE4buPOIaop':
+        {
+            'participantID': 'Test_ParticipantID_2',
+            'rolle': 'User', 
+            'abteilung': 'Verkauf'
+        } ,
+        'wUSlyZowz3Q9sjo':
+        {
+            'participantID': "Test_ParticipantID_3",
+            'rolle': 'User', 
+            'abteilung': 'Lager'
+        }
+    }
+}
 
-ETL_Pipe.loadResponses(test_sid)
-ETL_Pipe.transform_DataFrame()
-ETL_Pipe.creatTab2()
-#print(ETL_Pipe.df_KibanaImport_Tab2)
-ETL_Pipe.printCSV()
+ETL_Pipe = _ETL_Pipeline(Parameter)
+
+ETL_Pipe.loadResponses(url, username, password)
+ETL_Pipe.createResponses()
+ETL_Pipe.createCount()
+ETL_Pipe.createPie()
+print(ETL_Pipe.printJSON())
 
 """
 ### Parameter definieren
