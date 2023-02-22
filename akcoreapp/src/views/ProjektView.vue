@@ -77,6 +77,7 @@
             <router-link :to="'/projekt/' + projekt.projektId + '/edit'" class="btn btn-secondary flex-1">Projekt bearbeiten</router-link>
             <button class="btn btn-outline-danger flex-1" @click.prevent="deleteProjekt" type="submit">Projekt löschen</button>
         </div>
+        <router-link v-bind:to="`/projekt/${projekt.projektId}/dashboard` " class="btn btn-primary">Dashboard öffnen</router-link>
         <br />
             <br />
             <hr class="hr" />

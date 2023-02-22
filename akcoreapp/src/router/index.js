@@ -6,6 +6,7 @@ import PageNotFound from "@/views/PageNotFound"
 import CreateProjektView from "@/views/CreateProjektView"
 import ProjektView from "@/views/ProjektView"
 import EditProjektView from "@/views/EditProjektView"
+import ProjektDashboardView from "@/views/ProjektDashboardView"
 import LoginView from "@/views/LoginView.vue"
 
 
@@ -50,6 +51,12 @@ const routes = [
     path: '/projekt/:projektId/edit',
     name: 'EditProjektView',
     component: EditProjektView,
+    props: true
+  },
+  {
+    path: '/projekt/:projektId/dashboard',
+    name: 'EditProjektView',
+    component: ProjektDashboardView,
     props: true
   },
   {
