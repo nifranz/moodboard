@@ -1,11 +1,15 @@
 <template>
-    <LoadingComponent />
-    <router-link :to="`/projekt/${projekt.projektId}` " class="btn btn-outline-secondary">zur Projektübersicht</router-link>
-    <iframe :src="this.kibanaLink" height="600" width="800" nonce="rAnd0m"></iframe>
-
+      <h6>Projekt:</h6>
+      <h2>{{ projekt.projektName}}</h2>
+      <router-link :to="`/projekt/${projekt.projektId}` " class="btn btn-outline-secondary mb-3">zur Projektübersicht</router-link>
+      <LoadingComponent />
+      <div class ="d-flex justify-content-center align-items-center">
+        <iframe v-if="projekt.projektKibanaDashboardId" :src="this.kibanaLink" height="2000" width="1500" nonce="rAnd0m"></iframe>
+      </div>
 </template>
 
 <script>
+
     import api from '@/api'
     import LoadingComponent from "@/components/LoadingComponent.vue"
     export default {
@@ -30,7 +34,7 @@
                 this.loading = true;
                 this.projekt = await api.getProjekt(this.projektId);
                 console.log(this.projekt);
-                this.kibanaLink = `http://bolarus.wi.uni-potsdam.de/kibana/s/${this.projektId}/app/dashboards#/view/${this.projekt.projektKibanaDashboardId}?embed=true&_g=(refreshInterval%3A(pause%3A!t%2Cvalue%3A0)%2Ctime%3A(from%3Anow-15m%2Cto%3Anow))`
+                this.kibanaLink = `http://bolarus.wi.uni-potsdam.de/kibana/s/${this.projektId}/app/dashboards?auth_provider_hint=anonymous1#/view/${this.projekt.projektKibanaDashboardId}?embed=true&_g=(refreshInterval%3A(pause%3A!t%2Cvalue%3A0)%2Ctime%3A(from%3Anow-15m%2Cto%3Anow))`
                 this.loading = false;        
             },
         }
