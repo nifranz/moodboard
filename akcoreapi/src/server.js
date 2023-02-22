@@ -31,7 +31,7 @@ const { Client } = require('@elastic/elasticsearch')
     */
 
 
-const LIME_RPC_URL = 'http://localhost/index.php/admin/remotecontrol/';
+const LIME_RPC_URL = 'http://bolarus.wi.uni-potsdam.de/index.php/admin/remotecontrol/';
 const LRPC_LOGGING = true;
 const ERROR_LOG_PATH = __dirname + "/../logs/error.log"
 const LRPC_LOG_PATH = __dirname + "/../logs/lrpc.log"
@@ -1197,7 +1197,7 @@ app.post("/projekt", async (req, res) => {
         for (let teilnehmer of projektTeilnehmer) {
             for (let umfr of projektUmfragen) {
                 // adding participant to limesurvey
-                let limesurveyTokenId = await client.addParticipants(umfr.umfrageLimesurveyId, [ {"lastname":teilnehmer.mitarbeiterName.split(" ")[1] || "","firstname":teilnehmer.mitarbeiterName.split(" ")[0], "email":teilnehmer.mitarbeiterEmail/*,"attribute_1":teilnehmer.projektTeilnahme.mitarbeiterRolle, "attribute_2":teilnehmer.abteilung.abteilungName*/} ]);
+                let limesurveyTokenId = await client.addParticipants(umfr.umfrageLimesurveyId, [ {"lastname":"", "firstname":teilnehmer.mitarbeiterName, "email":teilnehmer.mitarbeiterEmail/*,"attribute_1":teilnehmer.projektTeilnahme.mitarbeiterRolle, "attribute_2":teilnehmer.abteilung.abteilungName*/} ]);
                 console.log("tokenid: ", limesurveyTokenId);
 
                 // writing the limesurveyTokenId to database
@@ -1539,6 +1539,21 @@ app.get("/inviteParticipants", async(req, res) => {
             await client.mailRegisteredParticipants(umfr.umfrageLimesurveyId);
         }
     }
+
+});
+
+app.get("/testInv/:surveyId", async(req,res) => {
+    if (req.params.surveyId == "none") {
+        var surveyId = 161788;
+    } else {
+        var surveyId = req.params.surveyId;
+    }
+    
+    let client = new LRPC();
+    await client.openConnection();
+    await client.remindParticipants(surveyId);
+    // await client.inviteParticipants(surveyId, ["tid = E6UMoIta0zkTMcO"], false);
+    await client.mailRegisteredParticipants(surveyId);
     await client.closeConnection();
     return res.sendStatus(HTTP.OK);
 });
@@ -1843,6 +1858,33 @@ async function createKibanaSpace(projektId, projektName) {
 
     return projektId;
 }
+
+app.get("/testCron", async (req, res) => {
+    console.log("CronCall");
+    return res.status(HTTP.OK).send();
+})
+
+app.get("/testMail", async (req, res) => {
+    console.log("GET /testMail");
+    let i = 2;
+    while (i > 0) {
+        console.log("send ", i)
+        exec(`mail -s "i = ${i}" nf.app@icloud.com <<< "Test Emails i = ${i}"`, async (error, stdout, stderr) => {
+            if (error) {
+                console.log('error:', error.message);
+                return res.sendStatus(HTTP.INTERNAL_ERROR);
+            }
+            if (stderr) {            
+                console.log('stderr:', stderr);
+                return res.sendStatus(HTTP.INTERNAL_ERROR);
+            }
+            console.log("stdout:", stdout);
+        })
+        i -= 1;
+    }
+    console.log("done")
+    return res.status(HTTP.OK).send()
+})
 
 app.get("/pipeTest", async (req, res) => {
     
