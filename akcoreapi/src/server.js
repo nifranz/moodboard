@@ -5,12 +5,13 @@ const cors = require('cors')
 const bodyParser = require('body-parser')
 const { Sequelize, DataTypes } = require('sequelize')
 const axios = require('axios')
-const {exec} = require('child_process')
+const {exec, spawn} = require('child_process')
 const uuid = require('uuid')
 // const morgan = require('morgan')
 const connection = require('./connection')
 const replace = require('replace-in-file')
 const { Client } = require('@elastic/elasticsearch')
+const { exit } = require('process')
     /* required ./connection.js' structure:
         const db_name = 'akcoredb';
         const db_username = '*****';
@@ -332,7 +333,12 @@ class ESAPI {
                 }
               }
             }
-          })
+            }).then(function(resp) {
+                console.log(`Successfully created index akcore_${projektId}_responses!`);
+                console.log(JSON.stringify(resp, null, 4));
+            }, function(err) {
+                console.trace(err.message);
+            });
           //create pie index
           await this.#client.indices.create({
             "index": "akcore_"+projektId+"_pie",
@@ -361,7 +367,12 @@ class ESAPI {
                   }
                 }
               }
-          })
+            }).then(function(resp) {
+                console.log(`Successfully created index akcore_${projektId}_pie!`);
+                console.log(JSON.stringify(resp, null, 4));
+              }, function(err) {
+                console.trace(err.message);
+              });
           // create count index
           await this.#client.indices.create({
             "index": "akcore_"+projektId+"_count",
@@ -393,7 +404,47 @@ class ESAPI {
                   }
                 }
               }
-            })
+            }).then(function(resp) {
+                console.log(`Successfully created index akcore_${projektId}_count!`);
+                console.log(JSON.stringify(resp, null, 4));
+              }, function(err) {
+                console.trace(err.message);
+              });
+    }
+
+    async deleteProjectIndices(projektId) {
+        await this.#client.indices.delete({
+            index: "akcore_"+projektId+"_count" 
+        }).then(function(resp) {
+            console.log(`Successfully deleted index akcore_${projektId}_count!`);
+            console.log(JSON.stringify(resp, null, 4));
+          }, function(err) {
+            console.trace(err.message);
+          });;
+        await this.#client.indices.delete({
+            index: "akcore_"+projektId+"_pie" 
+        }).then(function(resp) {
+            console.log(`Successfully deleted index akcore_${projektId}_pie!`);
+            console.log(JSON.stringify(resp, null, 4));
+          }, function(err) {
+            console.trace(err.message);
+          });
+        await this.#client.indices.delete({
+            index: "akcore_"+projektId+"_responses" 
+        }).then(function(resp) {
+            console.log(`Successfully deleted index akcore_${projektId}_responses!`);
+            console.log(JSON.stringify(resp, null, 4));
+          }, function(err) {
+            console.trace(err.message);
+          });
+    }
+
+    async writeDataToDocument(indexId, documentId, data) {
+        console.log("indexId:",indexId);
+        console.log("documentId:",documentId);
+        console.log("data:",data);
+        return null;
+
     }
     
     async getIndex() {
@@ -874,6 +925,9 @@ const Projekt = akcoredb.define('projekt', {
     projektEndDate: {
         type: DataTypes.DATEONLY
     },
+    projektKibanaDashboardId: {
+        type: DataTypes.STRING,
+    }
 }, {
     timestamps: false
 });
@@ -1144,7 +1198,7 @@ app.post("/projekt", async (req, res) => {
                 console.log("bad request")
                 return res.sendStatus(HTTP.BAD_REQUEST);
         }
-
+        data.projektKibanaDashboardId = "";
         // create new projekt
         let projekt = await Projekt.create(data);
 
@@ -1197,7 +1251,7 @@ app.post("/projekt", async (req, res) => {
         for (let teilnehmer of projektTeilnehmer) {
             for (let umfr of projektUmfragen) {
                 // adding participant to limesurvey
-                let limesurveyTokenId = await client.addParticipants(umfr.umfrageLimesurveyId, [ {"lastname":"", "firstname":teilnehmer.mitarbeiterName, "email":teilnehmer.mitarbeiterEmail/*,"attribute_1":teilnehmer.projektTeilnahme.mitarbeiterRolle, "attribute_2":teilnehmer.abteilung.abteilungName*/} ]);
+                let limesurveyTokenId = await client.addParticipants(umfr.umfrageLimesurveyId, [ {"lastname":"none", "firstname":teilnehmer.mitarbeiterName, "email":teilnehmer.mitarbeiterEmail/*,"attribute_1":teilnehmer.projektTeilnahme.mitarbeiterRolle, "attribute_2":teilnehmer.abteilung.abteilungName*/} ]);
                 console.log("tokenid: ", limesurveyTokenId);
 
                 // writing the limesurveyTokenId to database
@@ -1334,7 +1388,7 @@ app.put("/projekt/:projektId", async (req, res) => {
                 console.log( newSurveyIds.includes(umfr.umfrageLimesurveyId) )
                 if (newSurveyIds.includes(umfr.umfrageLimesurveyId)) { // add all teilnehmer to new surveys only
                     // adding all participants to limesurvey
-                    let limesurveyTokenId = await client.addParticipants(umfr.umfrageLimesurveyId, [ {"lastname":teilnehmer.mitarbeiterName.split(" ")[1] || "","firstname":teilnehmer.mitarbeiterName.split(" ")[0], "email":teilnehmer.mitarbeiterEmail/*,"attribute_1":teilnehmer.projektTeilnahme.mitarbeiterRolle, "attribute_2":teilnehmer.abteilung.abteilungName*/} ]);
+                    let limesurveyTokenId = await client.addParticipants(umfr.umfrageLimesurveyId, [ {"lastname": "none","firstname":teilnehmer.mitarbeiterName, "email":teilnehmer.mitarbeiterEmail/*,"attribute_1":teilnehmer.projektTeilnahme.mitarbeiterRolle, "attribute_2":teilnehmer.abteilung.abteilungName*/} ]);
                     console.log("tokenid: ", limesurveyTokenId);
 
                     teilnehmer.addUmfrage(umfr, { 
@@ -1394,8 +1448,9 @@ app.delete('/projekt/:projektId', async(req,res) => {
         // deleted related kibana space
         await deleteKibanaSpace(projekt.projektId);
 
-        // delete related kibana indices
-
+        // delete related elasticsearch indices
+        let esClient = new ESAPI();
+        await esClient.deleteProjectIndices(projekt.projektId);
 
         // delete projekt from akcoredb
         await projekt.destroy();
@@ -1583,120 +1638,116 @@ app.get("/triggerPipe/:surveyId/:tokenId/:answerId", async(req, res) => {
     let projektMitarbeiter = projekt.mitarbeiters;
     let mitarbeiterData = {}
     for (let ma of projektMitarbeiter) {
-        mitarbeiterData[ma.umfrages[0].fuelltAus.mitarbeiterLimesurveyTokenId] = { "rolle": ma.projektTeilnahme.mitarbeiterRolle, "abteilung": ma.abteilung.abteilungName };
+        mitarbeiterData[ma.umfrages[0].fuelltAus.mitarbeiterLimesurveyTokenId] = { "participantId": ma.mitarbeiterId, "rolle": ma.projektTeilnahme.mitarbeiterRolle, "abteilung": ma.abteilung.abteilungName };
     }
     let surveyData = {"surveyId": surveyId, "surveyStartDate": umfrage.umfrageStartDate, "surveyEndDate": umfrage.umfrageEndDate}
     let json = { "surveyData": surveyData, "teilnehmerData": mitarbeiterData };
 
     // create a jsonfile to read from python script with "json" variable as file content
     let filePath = __dirname + "/../pipeline/tmp." + uuid.v4() + "_survey_" + surveyId + "_mitarbeiter-data.json"
-    await fs.writeFile(filePath, JSON.stringify(json), function(){})
-    console.log("ya")
+    await fs.writeFile(filePath, JSON.stringify(json), function(){});
+    await fs.unlink(filePath);
 
-    exec(`python3 ${__dirname}/../pipeline/pipe.py ${filePath} `, async (error, stdout, stderr) => {
+    // exec(`python3 ${__dirname}/../pipeline/pipe.py ${filePath} `, async (error, stdout, stderr) => {
+    //     if (error) {
+    //         console.log('error:', error.message);
+    //         await fs.unlink(filePath);
+    //         return res.sendStatus(HTTP.INTERNAL_ERROR);
+    //     }
+    //     console.log("###########################\nExecuting python script...")
+    //     if (stderr) {            
+    //         console.log('stderr:', stderr);
+    //         await fs.unlink(filePath);
+    //         return res.sendStatus(HTTP.INTERNAL_ERROR);
+    //     }
+    //     console.log("stdout:", stdout);
+    //     console.log("Done!\n###########################")
+    //     await fs.unlink(filePath); // deleting the file after use
+    //     return res.sendStatus(HTTP.OK);
+    // })
+
+    let data = { // emulates the data returned by python script
+        "projektId": projekt.projektId,
+        "responsesTable": {
+            "surveyId01_participantId01": {
+                "spalte1": "value1",
+                "spalte2": "value2"
+            }
+        },
+        "pieTable": {
+        },
+        "countTable": {
+        }
+    }
+    let projektId = data.projektId;
+    let pie = data.pieTable;
+    let count = data.countTable;
+    let responses = data.responsesTable;
+
+    let esClient = new ESAPI();
+
+    // writing all response documents
+    for (let documentId of Object.keys(responses)) {
+        // the documentId is the desired id of an elasticsearch document: one entry of an index In a tabular metaphor, the index is a table, the document is one row in that table. the documentId is used to adress a specific row.
+        let indexId = `akcore_${projektId}_responses`
+        await esClient.writeDataToDocument(indexId, documentId, responses[documentId]);
+    };
+
+    // writing all pie documents
+    for (let documentId of Object.keys(pie)) {
+        // the documentId is the desired id of an elasticsearch document: one entry of an index. In a tabular metaphor, the index is a table, the document is one row in that table. the documentId is used to adress a specific row.
+        let indexId = `akcore_${projektId}_pie`
+        await esClient.writeDataToDocument(indexId, documentId, pie[documentId]);
+    };
+
+    // writing all count documents
+    for (let documentId of Object.keys(count)) {
+        // the documentId is the desired id of an elasticsearch document: one entry of an index In a tabular metaphor, the index is a table, the document is one row in that table. the documentId is used to adress a specific row.
+        let indexId = `akcore_${projektId}count`
+        await esClient.writeDataToDocument(indexId, documentId, count[documentId]);
+    };
+
+    return res.sendStatus(HTTP.OK);
+});
+
+
+
+/** 
+ * EXPERIMENTAL API ENDPOINTS
+ */
+app.get("/testExec/", async(req,res) => {
+    exec(`python3 ${__dirname}/../pipeline/pipe.py `, async (error, stdout, stderr) => {
         if (error) {
             console.log('error:', error.message);
-            await fs.unlink(filePath);
             return res.sendStatus(HTTP.INTERNAL_ERROR);
         }
         console.log("###########################\nExecuting python script...")
         if (stderr) {            
             console.log('stderr:', stderr);
-            await fs.unlink(filePath);
             return res.sendStatus(HTTP.INTERNAL_ERROR);
         }
         console.log("stdout:", stdout);
-        console.log("Done!\n###########################")
-        await fs.unlink(filePath); // deleting the file after use
+        // data = JSON.pars e(stdout);
+        // console.log(data.a)
+        console.log("Done!\n###########################") // deleting the file after use
         return res.sendStatus(HTTP.OK);
-    })
-});
+    });
 
-/** 
- * EXPERIMENTAL API ENDPOINTS
- */
-app.get("/lrpc/listParticipants/:surveyId", async (req, res) => {
-    let client;
-    try {
-        client = new LRPC();
-        await client.openConnection();
-        let result = await client.listParticipants(req.params.surveyId);
-        console.log("result:", result)
-        return res.send(result);
-    } catch (err) {
-        console.log(err);
-        return res.sendStatus(HTTP.INTERNAL_ERROR);
-    } finally {
-        await client.closeConnection();
-    }
-});
+    // const pipe = spawn(`python3`,[`${__dirname}/../pipeline/pipe.py`]);
+    // pipe.stdout.on('data', function(data) {
+    //     console.log(data.toString());
+    //     return res.send();
+    // })
 
-app.get("/readSurvey/:surveyId", async (req, res) => {
-    let surveyId = req.params.surveyId;
-    console.log("GET /readSurvey/:surveyId")
-    try {
-        var surveyBaseFile = await fs.readFile(__dirname + '/../assets/limesurvey/base_survey_2.lss', { encoding: 'UTF-8' });
-        if(!surveyBaseFile) throw new Error("Some error reading the file");
-
-        // create new temporary import lss-file
-        let filePath = __dirname + "/../assets/limesurvey/tmp." + uuid.v4() + "_survey-import-file_sid-" + surveyId + ".lss"
-        await fs.writeFile(filePath, surveyBaseFile, function(){}) 
-
-        // replacing survey properties in temporary file
-        let umfrageStartDate = "23-02-20";
-        let umfrageEndDate = "23-02-27";
-        let adminName = "AK-Core Admin ye"
-        let adminEmail = "nifranz@uni-potsdam.de ye"
-        let umfrageTitel = "Stimmungsbarometer yx"
-        let umfrageBeschreibung = "Beschreibung lets go"
-
-        let replacements = {
-            "replaceStartDate": {
-                files: filePath,
-                from: /<startdate>.*<\/startdate>/,
-                to: "<startdate><![CDATA["+ umfrageStartDate + " 00:00:00" +"]]></startdate>",
-            },
-            "replaceEndDate": {
-                files: filePath,
-                from: /<expires>.*<\/expires>/,
-                to: "<expires><![CDATA["+ umfrageEndDate + " 23:59:59" +"]]></expires>",
-            },
-            "replaceAdminName": {
-                files: filePath,
-                from: /<admin>.*<\/admin>/,
-                to: "<admin><![CDATA["+ adminName +"]]></admin>",
-            },
-            "replaceAdminEmail": {
-                files: filePath,
-                from: /<adminemail>.*<\/adminemail>/,
-                to: "<adminemail><![CDATA["+ adminEmail +"]]></adminemail>",
-            },
-            "replaceUmfrageTitel": {
-                files: filePath,
-                from: /<surveyls_title>.*<\/surveyls_title>/,
-                to: "<surveyls_title><![CDATA["+ umfrageTitel +"]]></surveyls_title>",
-            },
-            "replaceUmfrageBeschreibung": {
-                files: filePath,
-                from: /<surveyls_description>.*<\/surveyls_description>/,
-                to: "<surveyls_description><![CDATA["+ umfrageBeschreibung +"]]></surveyls_description>",
-            }
-        }
-        for (let replacement of Object.values(replacements)) {
-            await replace(replacement);
-        }
-
-        await fs.unlink(filePath); // deleting temporary file
-        return res.sendStatus(HTTP.OK);        
-
-    } catch (e) {
-        console.error(e)
-        res.sendStatus(HTTP.INTERNAL_ERROR);
-    }
-});
+    // pipe.stderr.on('data', function(data) {
+    //     console.log(data.toString());
+    //     return res.send();
+    // })
+    
+})
 
 app.get("/kibanaApiCall/:method", async (req, res) => {
-    const response = await axios.get("http://localhost:5601/kibana/api/"+req.params.method, {
+    const response = await axios.get("http://localhost:5601/kibana/s/7/api/saved_objects/dashboard", {
         headers: {
         'Content-Type': 'application/json',
         'kbn-xsrf': 'true',
@@ -1780,7 +1831,7 @@ async function createKibanaSpace(projektId, projektName) {
         return null;
     });
 
-    // setting moodboard object for reference in kibana
+    // the source dashboard in kibana; this will be copied to the new kibana project  space
     let moodboardSourceObject = {
         id: '66a487c9-6517-445b-85be-f37890b62af2',
         type: 'dashboard'
@@ -1800,8 +1851,26 @@ async function createKibanaSpace(projektId, projektName) {
             objects: [moodboardSourceObject],
             includeReferences: true
          }
-    }).then(function (response) {
+    }).then(async function (response) {
         if (log) console.log(response.data[projektId]);
+        console.log(response.data[projektId].successResults);
+
+        // saving the id of the dashboard (kibana saved object) to projekt database for later reference
+        let projektKibanaDashboardId = "";
+        for (savedObject of response.data[projektId].successResults) {
+            // of all saved objects that have been copied to the new kibana-space: get the one saved object that matches the source dashboard id (moodboardSourceObject) and save its destination id (new object) to db
+            if (savedObject.id == moodboardSourceObject.id) {
+                projektKibanaDashboardId = savedObject.destinationId;
+            }
+        }
+        let projekt = await Projekt.findOne({
+            where: {projektId: projektId}
+        });
+        // save the projektKibanaDashboardId to projekt
+        projekt.set({
+            projektKibanaDashboardId: projektKibanaDashboardId,
+        });
+        await projekt.save();
     })
     .catch(function (error) {
         console.error(error);
@@ -1862,6 +1931,34 @@ async function createKibanaSpace(projektId, projektName) {
 app.get("/testCron", async (req, res) => {
     console.log("CronCall");
     return res.status(HTTP.OK).send();
+})
+
+app.get("/testUpdateIndices", async (req, res) => {
+    let data = {
+        "projektId": "abc",
+        "responses": {
+            "surveyId01_participantId01": {
+                "spalte1": "value1",
+                "spalte2": "value2"
+            }
+        },
+        "pie": {
+        },
+        "count": {
+        }
+    }
+    let projektId = data.projektId;
+    let pie = data.pieData;
+    let count = data.countData;
+    let responses = data.responsesData;
+
+    let esClient = new ESAPI();
+
+    for (responseId of Object.keys(responses)) {
+        let indexId = `akcore_${projektId}_responses`
+        let documentId = repsonseId;
+        await esClient.writeDataToDocument(indexId, documentId, responses[responseId]);
+    }
 })
 
 app.get("/testMail", async (req, res) => {

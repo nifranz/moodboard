@@ -51,10 +51,13 @@ import time
 #     sys.stdout.write(i+": ")
 #     print(teilnehmerData[i])
 
-es = Elasticsearch(
-    "https://localhost:9200",
-    ca_certs="./http_ca.crt",
-    api_key=("api_key.id", "api_key.api_key")
-)
+# es = Elasticsearch(
+#     "https://localhost:9200",
+#     ca_certs="./http_ca.crt",
+#     api_key=("api_key.id", "api_key.api_key")
+# )
 
+data = {"a": "abc"}
+print(json.dumps(data))
 
+# print('{"a":30}')
