@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 const client = axios.create({
-    baseURL: 'http://141.89.39.93/api/',
+    baseURL: 'http://bolarus.wi.uni-potsdam.de/api/',
     json: true
 });
 
