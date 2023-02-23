@@ -93,6 +93,7 @@ class _ETL_Pipeline(object):
             #'Q8_Symbol',
             #'Q9_Symbol',
             #'Q10_Symbol',
+            #'MQ1_Symbol',
             #'AvgA1_Symbol',
             #'AvgA3_Symbol',
             #'AvgAll_Symbol',
@@ -305,7 +306,6 @@ class _ETL_Pipeline(object):
         self.df_Responses['R3'] = self.df_import_short['G02Q08[SQ003]']
         self.df_Responses['M1'] = self.TransformResponses(self.df_import_short['G03Q09']) #Frage: maßnhame teilngenommen?
         self.df_Responses['MQ1'] = self.TransformResponses(self.df_import_short['G03Q10[SQ001]'])
-        self.df_Responses['MQ1_Symbol'] = self.TransformResponses_Symbol(self.df_import_short['G03Q10[SQ001]'])
         self.df_Responses['MO1'] = self.df_import_short['G03Q11']
         self.df_Responses['AvgA1'] = self.get_AvgQuestions(self.df_Responses, ['Q1','Q2','Q3','Q4'])
         self.df_Responses['AvgA3'] = self.get_AvgQuestions(self.df_Responses, ['Q5','Q6','Q7','Q8','Q9','Q10'])
@@ -320,6 +320,7 @@ class _ETL_Pipeline(object):
         #self.df_Responses['Q8_Symbol'] = self.TransformResponses_Symbol(self.df_import_short['G04Q13[SQ001]'])
         #self.df_Responses['Q9_Symbol'] = self.TransformResponses_Symbol(self.df_import_short['G04Q13[SQ002]'])
         # self.df_Responses['Q10_Symbol'] = self.TransformResponses_Symbol(self.df_import_short['G04Q13[SQ003]'])
+        #self.df_Responses['MQ1_Symbol'] = self.TransformResponses_Symbol(self.df_import_short['G03Q10[SQ001]'])
         # self.df_Responses['AvgA1_Symbol'] = self.get_AvgQuestions_Symbol(self.df_Responses, ['Q1','Q2','Q3','Q4'])
         # self.df_Responses['AvgA3_Symbol'] = self.get_AvgQuestions_Symbol(self.df_Responses, ['Q5','Q6','Q7','Q8','Q9','Q10'])
         # self.df_Responses['AvgAll_Symbol'] = self.get_AvgQuestions_Symbol(self.df_Responses, ['Q1','Q2','Q3','Q4','Q5','Q6','Q7','Q8','Q9','Q10'])
