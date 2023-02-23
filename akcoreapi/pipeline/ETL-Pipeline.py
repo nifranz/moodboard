@@ -17,6 +17,13 @@ test_sid = 552287
 #sid = int(sys.argv[1])
 #Kibana_Index = int(sys.argv[2])
 
+# storing json file data into variable "mitarbeiterData"
+json_file_path = sys.argv[1]
+json_file = open(json_file_path)
+params = json.load(json_file)
+json_file.close()
+
+#experimental test parameters, not used
 Parameter =  {
     'projektId' : "Test_Projekt_ID",
     'surveyData': 
@@ -29,32 +36,37 @@ Parameter =  {
     {
         'azTHjegIGs8UrB4':
         {
-            'participantID': "Test_ParticipantID_1",
+            'participantID': 1,
             'rolle': 'Change-Manager', 
             'abteilung': 'Verkauf'
         } ,
         'Xy62wE4buPOIaop':
         {
-            'participantID': 'Test_ParticipantID_2',
+            'participantID': 2,
             'rolle': 'User', 
             'abteilung': 'Verkauf'
         } ,
         'wUSlyZowz3Q9sjo':
         {
-            'participantID': "Test_ParticipantID_3",
+            'participantID': 3,
             'rolle': 'User', 
             'abteilung': 'Lager'
         }
     }
 }
 
-ETL_Pipe = _ETL_Pipeline(Parameter)
+ETL_Pipe = _ETL_Pipeline(params)
 
 ETL_Pipe.loadResponses(url, username, password)
 ETL_Pipe.createResponses()
 ETL_Pipe.createCount()
 ETL_Pipe.createPie()
-print(ETL_Pipe.printJSON())
+results = ETL_Pipe.printJSON()
+# print(results)
+with open("/home/nifranz/dev/git/akcore_stable/akcoreapi/pipeline/pipe_input.json", "w") as outfile:
+    outfile.write(json.dumps(params, indent = 4))
+with open("/home/nifranz/dev/git/akcore_stable/akcoreapi/pipeline/pipe_results.json", "w") as outfile:
+    outfile.write(json.dumps(results, indent = 4))
 
 """
 ### Parameter definieren

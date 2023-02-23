@@ -101,7 +101,7 @@ class _Survey(object):
         ])
         response = self.api.query(method=method, params=params)
         response_type = type(response)
-        print(response_type)
+        # print(response_type)
 
         
         #else:

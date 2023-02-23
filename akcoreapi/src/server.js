@@ -227,224 +227,243 @@ class ESAPI {
 
     //create responses index
     async createProjektIndices(projektId) {
-        await this.#client.indices.create({
+        // create response index
+        await this.#client.indices.create({        
             "index": "akcore_"+projektId+"_responses",
             "mappings": {
-              "_meta": {
+                "_meta": {
                 "created_by": "file-data-visualizer"
-              },
-              "properties": {
+                },
+                "properties": {
                 "AvgA1": {
-                  "type": "double"
+                    "type": "double"
                 },
                 "AvgA3": {
-                  "type": "double"
+                    "type": "double"
                 },
                 "AvgAll": {
-                  "type": "double"
+                    "type": "double"
                 },
                 "Complete": {
-                  "type": "keyword"
+                    "type": "keyword"
                 },
                 "DateSent": {
-                  "type": "date",
-                  "format": "iso8601"
+                    "type": "date",
+                    "format": "iso8601"
                 },
                 "Department": {
-                  "type": "keyword"
+                    "type": "keyword"
                 },
                 "Duration": {
-                  "type": "long"
+                    "type": "long"
                 },
                 "M1": {
-                  "type": "keyword"
+                    "type": "keyword"
                 },
                 "MO1": {
-                  "type": "keyword"
+                    "type": "keyword"
                 },
                 "MQ1": {
-                  "type": "long"
+                    "type": "long"
                 },
                 "O1": {
-                  "type": "keyword"
+                    "type": "keyword"
                 },
                 "O2": {
-                  "type": "keyword"
+                    "type": "keyword"
                 },
                 "O3": {
-                  "type": "keyword"
+                    "type": "keyword"
                 },
                 "O4": {
-                  "type": "keyword"
+                    "type": "keyword"
                 },
                 "PartParticipant": {
-                  "type": "keyword"
+                    "type": "keyword"
                 },
                 "ParticipantID": {
-                  "type": "long"
+                    "type": "long"
                 },
                 "Q1": {
-                  "type": "long"
+                    "type": "long"
                 },
                 "Q10": {
-                  "type": "long"
+                    "type": "long"
                 },
                 "Q2": {
-                  "type": "long"
+                    "type": "long"
                 },
                 "Q3": {
-                  "type": "long"
+                    "type": "long"
                 },
                 "Q4": {
-                  "type": "long"
+                    "type": "long"
                 },
                 "Q5": {
-                  "type": "long"
+                    "type": "long"
                 },
                 "Q6": {
-                  "type": "long"
+                    "type": "long"
                 },
                 "Q7": {
-                  "type": "long"
+                    "type": "long"
                 },
                 "Q8": {
-                  "type": "long"
+                    "type": "long"
                 },
                 "Q9": {
-                  "type": "long"
+                    "type": "long"
                 },
                 "R1": {
-                  "type": "long"
+                    "type": "long"
                 },
                 "R2": {
-                  "type": "long"
+                    "type": "long"
                 },
                 "R3": {
-                  "type": "long"
+                    "type": "long"
                 },
                 "Role": {
-                  "type": "keyword"
+                    "type": "keyword"
                 },
                 "SurveyID": {
-                  "type": "long"
+                    "type": "long"
                 },
                 "column1": {
-                  "type": "long"
+                    "type": "long"
                 }
-              }
+                }
             }
-            }).then(function(resp) {
-                console.log(`Successfully created index akcore_${projektId}_responses!`);
-                console.log(JSON.stringify(resp, null, 4));
-            }, function(err) {
-                console.trace(err.message);
-            });
-          //create pie index
-          await this.#client.indices.create({
+        }).then(function(resp) {
+            console.log(`Successfully created index akcore_${projektId}_responses!`);
+            console.log(JSON.stringify(resp, null, 4));
+        }, function(err) {
+            console.trace(err.message);
+        });
+
+        //create pie index
+        await this.#client.indices.create({
             "index": "akcore_"+projektId+"_pie",
             "mappings": {
-                "_meta": {
-                  "created_by": "file-data-visualizer"
+            "_meta": {
+                "created_by": "file-data-visualizer"
+            },
+            "properties": {
+                "Department": {
+                "type": "keyword"
                 },
-                "properties": {
-                  "Department": {
-                    "type": "keyword"
-                  },
-                  "ParticipantID": {
-                    "type": "long"
-                  },
-                  "Percent": {
-                    "type": "long"
-                  },
-                  "Role": {
-                    "type": "keyword"
-                  },
-                  "Rx": {
-                    "type": "long"
-                  },
-                  "SurveyID": {
-                    "type": "long"
-                  }
+                "ParticipantID": {
+                "type": "long"
+                },
+                "Percent": {
+                "type": "long"
+                },
+                "Role": {
+                "type": "keyword"
+                },
+                "Rx": {
+                "type": "long"
+                },
+                "SurveyID": {
+                "type": "long"
                 }
-              }
-            }).then(function(resp) {
-                console.log(`Successfully created index akcore_${projektId}_pie!`);
-                console.log(JSON.stringify(resp, null, 4));
-              }, function(err) {
-                console.trace(err.message);
-              });
-          // create count index
-          await this.#client.indices.create({
+            }
+            }
+        }).then(function(resp) {
+            console.log(`Successfully created index akcore_${projektId}_pie!`);
+            console.log(JSON.stringify(resp, null, 4));
+        }, function(err) {
+            console.trace(err.message);
+        });
+
+        // create count index
+        await this.#client.indices.create({
             "index": "akcore_"+projektId+"_count",
             "mappings": {
-                "_meta": {
-                  "created_by": "file-data-visualizer"
+            "_meta": {
+                "created_by": "file-data-visualizer"
+            },
+            "properties": {
+                "Category": {
+                "type": "long"
                 },
-                "properties": {
-                  "Category": {
-                    "type": "long"
-                  },
-                  "CountA1": {
-                    "type": "long"
-                  },
-                  "CountA3": {
-                    "type": "long"
-                  },
-                  "CountAll": {
-                    "type": "long"
-                  },
-                  "Department": {
-                    "type": "keyword"
-                  },
-                  "Role": {
-                    "type": "keyword"
-                  },
-                  "SurveyID": {
-                    "type": "long"
-                  }
+                "CountA1": {
+                "type": "long"
+                },
+                "CountA3": {
+                "type": "long"
+                },
+                "CountAll": {
+                "type": "long"
+                },
+                "Department": {
+                "type": "keyword"
+                },
+                "Role": {
+                "type": "keyword"
+                },
+                "SurveyID": {
+                "type": "long"
                 }
-              }
-            }).then(function(resp) {
-                console.log(`Successfully created index akcore_${projektId}_count!`);
-                console.log(JSON.stringify(resp, null, 4));
-              }, function(err) {
-                console.trace(err.message);
-              });
+            }
+            }
+        }).then(function(resp) {
+            console.log(`Successfully created index akcore_${projektId}_count!`);
+            console.log(JSON.stringify(resp, null, 4));
+        }, function(err) {
+            console.trace(err.message);
+        });
     }
 
     async deleteProjectIndices(projektId) {
+        // create count index
         await this.#client.indices.delete({
             index: "akcore_"+projektId+"_count" 
         }).then(function(resp) {
             console.log(`Successfully deleted index akcore_${projektId}_count!`);
             console.log(JSON.stringify(resp, null, 4));
-          }, function(err) {
+        }, function(err) {
             console.trace(err.message);
-          });;
+        });
+
+        // create pie index
         await this.#client.indices.delete({
             index: "akcore_"+projektId+"_pie" 
         }).then(function(resp) {
             console.log(`Successfully deleted index akcore_${projektId}_pie!`);
             console.log(JSON.stringify(resp, null, 4));
-          }, function(err) {
+        }, function(err) {
             console.trace(err.message);
-          });
+        });
+
+        // create responses index
         await this.#client.indices.delete({
             index: "akcore_"+projektId+"_responses" 
         }).then(function(resp) {
             console.log(`Successfully deleted index akcore_${projektId}_responses!`);
             console.log(JSON.stringify(resp, null, 4));
-          }, function(err) {
+        }, function(err) {
             console.trace(err.message);
-          });
+        });
     }
 
-    async writeDataToDocument(indexId, documentId, data) {
+    async writeDataToDocument(indexId, documentId, data, refresh) {
+        await this.#client.index({
+            index: indexId,
+            id: documentId,
+            refresh: refresh,
+            document: data
+        }).then(function(resp) {
+            console.log(`Successfully wrote document (id: "${documentId}") to index "${indexId}"!`);
+            console.log(JSON.stringify(resp, null, 4));
+        }, function(err) {
+            console.trace(err.message);
+        });
+
         console.log("indexId:",indexId);
         console.log("documentId:",documentId);
         console.log("data:",data);
         return null;
-
     }
     
     async getIndex() {
@@ -1692,61 +1711,149 @@ app.get("/triggerPipe/:surveyId/:tokenId/:answerId", async(req, res) => {
     for (let documentId of Object.keys(responses)) {
         // the documentId is the desired id of an elasticsearch document: one entry of an index In a tabular metaphor, the index is a table, the document is one row in that table. the documentId is used to adress a specific row.
         let indexId = `akcore_${projektId}_responses`
-        await esClient.writeDataToDocument(indexId, documentId, responses[documentId]);
+        // await esClient.writeDataToDocument(indexId, documentId, responses[documentId]);
     };
 
     // writing all pie documents
     for (let documentId of Object.keys(pie)) {
         // the documentId is the desired id of an elasticsearch document: one entry of an index. In a tabular metaphor, the index is a table, the document is one row in that table. the documentId is used to adress a specific row.
         let indexId = `akcore_${projektId}_pie`
-        await esClient.writeDataToDocument(indexId, documentId, pie[documentId]);
+        // await esClient.writeDataToDocument(indexId, documentId, pie[documentId]);
     };
 
     // writing all count documents
     for (let documentId of Object.keys(count)) {
         // the documentId is the desired id of an elasticsearch document: one entry of an index In a tabular metaphor, the index is a table, the document is one row in that table. the documentId is used to adress a specific row.
         let indexId = `akcore_${projektId}count`
-        await esClient.writeDataToDocument(indexId, documentId, count[documentId]);
+        // await esClient.writeDataToDocument(indexId, documentId, count[documentId]);
     };
 
     return res.sendStatus(HTTP.OK);
 });
 
+app.get("/test/writeToIndex", async (req, res) => {
+    let esClient = new ESAPI();
+    await esClient.writeDataToDocument("akcore_testindex_pie","nan_29_R1", {
+        "SurveyID_LS": 512,
+        "SurveyID": "February 2023",
+        "ParticipantID": 29,
+        "Department": "Projektteam",
+        "Role": "Key-User",
+        "Rx": 1,
+        "Percent": NaN
+    }, refresh = true);
 
+    return res.sendStatus(HTTP.OK);
+});
+
+app.get("/triggerPipe2/:surveyId/:tokenId/:answerId", async(req, res) => {    
+    let surveyId = req.params.surveyId;
+    let tokenId = req.params.tokenId;
+    let answerId = req.params.answerId;
+    console.log("GET /triggerPipe2/"+surveyId+"/"+tokenId+"/"+answerId);
+
+    // get mitarbeiter data for pipeline ingestion
+    let umfrage = await Umfrage.findOne({
+        where: { umfrageLimesurveyId: surveyId },
+    });
+    if (!umfrage) return res.sendStatus(HTTP.NOT_FOUND);
+    let projekt = await Projekt.findOne({
+        where: { projektId: umfrage.projektId },
+        include: { 
+            model: Mitarbeiter,
+            include: [{
+                model: Umfrage,
+                where: { umfrageId: umfrage.umfrageId }
+            }, Abteilung]
+         }
+    });
+    if (!projekt) return res.sendStatus(HTTP.NOT_FOUND);
+    let projektMitarbeiter = projekt.mitarbeiters;
+    let mitarbeiterData = {}
+    for (let ma of projektMitarbeiter) {
+        mitarbeiterData[ma.umfrages[0].fuelltAus.mitarbeiterLimesurveyTokenId] = { "participantID": ma.mitarbeiterId, "rolle": ma.projektTeilnahme.mitarbeiterRolle, "abteilung": ma.abteilung.abteilungName };
+    }
+    let surveyData = {"surveyId": surveyId, "surveyStartDate": umfrage.umfrageStartDate, "surveyEndDate": umfrage.umfrageEndDate}
+    let json = { "projektId": projekt.projektId, "surveyData": surveyData, "teilnehmerData": mitarbeiterData };
+
+    // create a jsonfile to read from python script with "json" variable as file content
+    var filePath = __dirname + "/../pipeline/tmp." + uuid.v4() + "_survey_" + surveyId + "_mitarbeiter-data.json"
+    await fs.writeFile(filePath, JSON.stringify(json), function(){});
+    
+    let data = await new Promise(async (resolve, reject) => {
+        exec(`python3 ${__dirname}/../pipeline/ETL-Pipeline.py ${filePath} `, async (error, stdout, stderr) => {
+            if (error) {
+                console.log('error:', error.message);
+                reject();
+            }
+            if (stderr) {            
+                console.log('stderr:', stderr);
+                console.log("Error!\n###########################")
+                reject();
+            }
+            console.log("stdout:", stdout);
+
+            let returnData = { // emulates the data returned by python script
+                "projektId": projekt.projektId,
+                "responsesTable": {
+                    "surveyId01_participantId01": {
+                        "spalte1": "value1",
+                        "spalte2": "value2"
+                    }
+                },
+                "pieTable": {
+                },
+                "countTable": {
+                }
+            }
+            resolve(returnData);
+        });
+    }).catch(() => {
+        return null;
+    }).then(async (data) => {
+        return data;
+    }).finally(async () => {
+         // deleting the file after use
+         await fs.unlink(filePath);
+    });
+    
+
+    if (data === null) return res.sendStatus(HTTP.INTERNAL_ERROR);
+
+    let projektId = data.projektId;
+    let pie = data.pieTable;
+    let count = data.countTable;
+    let responses = data.responsesTable;
+
+    let esClient = new ESAPI();
+
+    // writing all response documents
+    for (let documentId of Object.keys(responses)) {
+        // the documentId is the desired id of an elasticsearch document: one entry of an index In a tabular metaphor, the index is a table, the document is one row in that table. the documentId is used to adress a specific row.
+        let indexId = `akcore_${projektId}_responses`
+        // await esClient.writeDataToDocument(indexId, documentId, responses[documentId]);
+    };
+
+    // writing all pie documents
+    for (let documentId of Object.keys(pie)) {
+        // the documentId is the desired id of an elasticsearch document: one entry of an index. In a tabular metaphor, the index is a table, the document is one row in that table. the documentId is used to adress a specific row.
+        let indexId = `akcore_${projektId}_pie`
+        // await esClient.writeDataToDocument(indexId, documentId, pie[documentId]);
+    };
+
+    // writing all count documents
+    for (let documentId of Object.keys(count)) {
+        // the documentId is the desired id of an elasticsearch document: one entry of an index In a tabular metaphor, the index is a table, the document is one row in that table. the documentId is used to adress a specific row.
+        let indexId = `akcore_${projektId}count`
+        // await esClient.writeDataToDocument(indexId, documentId, count[documentId]);
+    };
+
+    return res.sendStatus(HTTP.OK);    
+});
 
 /** 
  * EXPERIMENTAL API ENDPOINTS
  */
-app.get("/testExec/", async(req,res) => {
-    exec(`python3 ${__dirname}/../pipeline/pipe.py `, async (error, stdout, stderr) => {
-        if (error) {
-            console.log('error:', error.message);
-            return res.sendStatus(HTTP.INTERNAL_ERROR);
-        }
-        console.log("###########################\nExecuting python script...")
-        if (stderr) {            
-            console.log('stderr:', stderr);
-            return res.sendStatus(HTTP.INTERNAL_ERROR);
-        }
-        console.log("stdout:", stdout);
-        // data = JSON.pars e(stdout);
-        // console.log(data.a)
-        console.log("Done!\n###########################") // deleting the file after use
-        return res.sendStatus(HTTP.OK);
-    });
-
-    // const pipe = spawn(`python3`,[`${__dirname}/../pipeline/pipe.py`]);
-    // pipe.stdout.on('data', function(data) {
-    //     console.log(data.toString());
-    //     return res.send();
-    // })
-
-    // pipe.stderr.on('data', function(data) {
-    //     console.log(data.toString());
-    //     return res.send();
-    // })
-    
-})
 
 app.get("/kibanaApiCall/:method", async (req, res) => {
     const response = await axios.get("http://localhost:5601/kibana/s/7/api/saved_objects/dashboard", {
@@ -1800,11 +1907,6 @@ async function deleteKibanaSpace(projektId) {
         return null;
     });
 }
-
-app.get("/kibDeleteSpace", async (req, res) => {
-    await deleteKibanaSpace("projekt0123");
-    res.sendStatus(HTTP.OK);
-})
 
 async function createKibanaSpace(projektId, projektName) {
     projektId = projektId + "";
@@ -1930,78 +2032,33 @@ async function createKibanaSpace(projektId, projektName) {
     return projektId;
 }
 
-app.get("/testCron", async (req, res) => {
-    console.log("CronCall");
-    return res.status(HTTP.OK).send();
-})
+// app.get("/testUpdateIndices", async (req, res) => {
+//     let data = {
+//         "projektId": "abc",
+//         "responses": {
+//             "surveyId01_participantId01": {
+//                 "spalte1": "value1",
+//                 "spalte2": "value2"
+//             }
+//         },
+//         "pie": {
+//         },
+//         "count": {
+//         }
+//     }
+//     let projektId = data.projektId;
+//     let pie = data.pieData;
+//     let count = data.countData;
+//     let responses = data.responsesData;
 
-app.get("/testUpdateIndices", async (req, res) => {
-    let data = {
-        "projektId": "abc",
-        "responses": {
-            "surveyId01_participantId01": {
-                "spalte1": "value1",
-                "spalte2": "value2"
-            }
-        },
-        "pie": {
-        },
-        "count": {
-        }
-    }
-    let projektId = data.projektId;
-    let pie = data.pieData;
-    let count = data.countData;
-    let responses = data.responsesData;
+//     let esClient = new ESAPI();
 
-    let esClient = new ESAPI();
-
-    for (responseId of Object.keys(responses)) {
-        let indexId = `akcore_${projektId}_responses`
-        let documentId = repsonseId;
-        await esClient.writeDataToDocument(indexId, documentId, responses[responseId]);
-    }
-})
-
-app.get("/testMail", async (req, res) => {
-    console.log("GET /testMail");
-    let i = 2;
-    while (i > 0) {
-        console.log("send ", i)
-        exec(`mail -s "i = ${i}" nf.app@icloud.com <<< "Test Emails i = ${i}"`, async (error, stdout, stderr) => {
-            if (error) {
-                console.log('error:', error.message);
-                return res.sendStatus(HTTP.INTERNAL_ERROR);
-            }
-            if (stderr) {            
-                console.log('stderr:', stderr);
-                return res.sendStatus(HTTP.INTERNAL_ERROR);
-            }
-            console.log("stdout:", stdout);
-        })
-        i -= 1;
-    }
-    console.log("done")
-    return res.status(HTTP.OK).send()
-})
-
-app.get("/pipeTest", async (req, res) => {
-    
-    let projektId = "projekt0123";
-    let projektName = "ERP System";
-
-    let client = new ESAPI();
-    await createKibanaSpace(projektId, projektName);
-    await client.createProjektIndices(projektId);
-    // await client.setIndexReadOnly("count");
-    // await client.setIndexReadOnly("pie");
-    // await client.setIndexReadOnly("responses");
-    
-
-    // await client.copyIndecesToProjektSpace(projektId);
-    
-    return res.sendStatus(HTTP.OK);
-})
+//     for (responseId of Object.keys(responses)) {
+//         let indexId = `akcore_${projektId}_responses`
+//         let documentId = repsonseId;
+//         await esClient.writeDataToDocument(indexId, documentId, responses[responseId]);
+//     }
+// })
 
 akcoredb
     .sync({})

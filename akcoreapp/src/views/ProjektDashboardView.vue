@@ -34,7 +34,7 @@
                 this.loading = true;
                 this.projekt = await api.getProjekt(this.projektId);
                 console.log(this.projekt);
-                this.kibanaLink = `http://bolarus.wi.uni-potsdam.de/kibana/s/${this.projektId}/app/dashboards?auth_provider_hint=anonymous1#/view/${this.projekt.projektKibanaDashboardId}?embed=true&_g=(refreshInterval%3A(pause%3A!t%2Cvalue%3A0)%2Ctime%3A(from%3Anow-15m%2Cto%3Anow))`
+                this.kibanaLink = `http://bolarus.wi.uni-potsdam.de/kibana/s/${this.projektId}/app/dashboards?auth_provider_hint=anonymous1#/view/${this.projekt.projektKibanaDashboardId}?embed=true&_g=(refreshInterval%3A(pause%3A!t%2Cvalue%3A0)%2Ctime%3A(from%3Anow-15m%2Cto%3Anow))&hide-filter-bar=true`
                 this.loading = false;        
             },
         }
