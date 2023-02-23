@@ -50,7 +50,7 @@ class _ETL_Pipeline(object):
         }
         
         self.Responses_colNames = [
-            'SurveyID_LS',
+            'Survey_Name',
             'SurveyID',
             'PartParticipant',
             'token',
@@ -83,23 +83,24 @@ class _ETL_Pipeline(object):
             'O4',
             'AvgA3',
             'AvgAll',
-            'Q1_Symbol',  
-            'Q2_Symbol',
-            'Q3_Symbol',
-            'Q4_Symbol',
-            'Q5_Symbol',
-            'Q6_Symbol',
-            'Q7_Symbol',
-            'Q8_Symbol',
-            'Q9_Symbol',
-            'Q10_Symbol',
-            'AvgA1_Symbol',
-            'AvgA3_Symbol',
-            'AvgAll_Symbol',
+            #'Q1_Symbol',  
+            #'Q2_Symbol',
+            #'Q3_Symbol',
+            #'Q4_Symbol',
+            #'Q5_Symbol',
+            #'Q6_Symbol',
+            #'Q7_Symbol',
+            #'Q8_Symbol',
+            #'Q9_Symbol',
+            #'Q10_Symbol',
+            #'MQ1_Symbol',
+            #'AvgA1_Symbol',
+            #'AvgA3_Symbol',
+            #'AvgAll_Symbol',
         ]
         self.Count_colNames = [
-            'SurveyID_LS',
             'SurveyID',
+            'Survey_Name',
             'Department',
             'Role',
             'Category',
@@ -108,8 +109,8 @@ class _ETL_Pipeline(object):
             'CountA3',
         ]
         self.Pie_colNames = [
-            'SurveyID_LS',
             'SurveyID',
+            'Survey_Name',
             'ParticipantID',
             'Department',
             'Role',
@@ -136,15 +137,17 @@ class _ETL_Pipeline(object):
 
         # Cast into Pandas Dataframe
         self.df_import_short = pd.read_csv(StringIO(responses_short_decoded), sep=";",quotechar='"') 
+        #self.df_import_short = self.df_import_short.replace(np.nan, None)
         #print(df_import_short)
         self.df_import_long = pd.read_csv(StringIO(responses_long_decoded), sep=";",quotechar='"')
+        #self.df_import_long = self.df_import_long.replace(np.nan, None)
         #print(df_import_long)
     
     def TransformResponses(self, Responses):
         trans_Responses = []
         for res in Responses:
             if pd.isnull(res) == True:
-                trans_Responses.append(0)
+                trans_Responses.append(np.NaN)
             else:
                 trans_Responses.append(self.dictResponses[res])
         return trans_Responses
@@ -153,7 +156,7 @@ class _ETL_Pipeline(object):
         trans_Responses = []
         for res in Responses:
             if pd.isnull(res) == True:
-                trans_Responses.append(None)
+                trans_Responses.append(np.NaN)
             else:
                 trans_Responses.append(self.dictResponses_Symbol[res])
         return trans_Responses
@@ -189,17 +192,24 @@ class _ETL_Pipeline(object):
                     Avg[i] = "++"   
         return Avg  
 
-    def organizeDf(self,df,teilnehmerData):
+    def organizeDf(self,df,teilnehmerData,surveyData):
         nichtTeilgenommen = []
         returnDF = pd.DataFrame(columns = df.columns)
         for teil in teilnehmerData:
             if len(df.loc[df.token == teil]) == 0:
                 nichtTeilgenommen.append(teil)
             elif len(df.loc[df.token == teil]) == 1:
+                df.loc[df.token == teil,"Department"] = teilnehmerData[teil]['abteilung']
+                df.loc[df.token == teil,'Role'] = teilnehmerData[teil]['rolle']
+                #print(newLine)
+                #newLine['Department'] = teilnehmerData[teil]['abteilung']
+                #newLine['Role'] = teilnehmerData[teil]['rolle']
                 returnDF = pd.concat([df.loc[df.token == teil],returnDF], ignore_index=True)    
             elif len(df.loc[df.token == teil]) > 1:
-                if 'yes' in list(df.Complete.loc[df.token == teil]):
-                    returnDF = pd.concat([df.loc[df.token == teil].loc[df.Complete == "yes"],returnDF], ignore_index=True)
+                if True in list(df.Complete.loc[df.token == teil]):
+                    df.loc[df.token == teil].loc[df.Complete == "yes" ,"Department"] = teilnehmerData[teil]['abteilung']
+                    df.loc[df.token == teil].loc[df.Complete == "yes",'Role'] = teilnehmerData[teil]['rolle']
+                    returnDF = pd.concat([df.loc[df.token == teil].loc[df.Complete == "yes"],returnDF], ignore_index=True) 
                 else:
                     newLine = df.loc[df.token == teil].tail(1)
                     print(newLine["Department"].isnull())
@@ -212,13 +222,15 @@ class _ETL_Pipeline(object):
             ghostLine = [np.NaN] * len(df.columns)
             #ghostLine = pd.Series(ghostLine)
             for nt in nichtTeilgenommen:
-                ghostLine[list(df.columns).index("SurveyID")]= df.SurveyID.values[0]
+                ghostLine[list(df.columns).index("SurveyID")]= surveyData['surveyId']
                 ghostLine[list(df.columns).index("token")]= nt
                 ghostLine[list(df.columns).index("ParticipantID")] = teilnehmerData[nt]['participantID']
                 ghostLine[list(df.columns).index("Department")]=  teilnehmerData[nt]['abteilung']
                 ghostLine[list(df.columns).index("Role")]=teilnehmerData[nt]['rolle']
                 returnDF.loc[len(returnDF)] = ghostLine
         return returnDF
+
+
 
     def createResponses(self):
         ###Initialisierung der DataFrames
@@ -240,9 +252,9 @@ class _ETL_Pipeline(object):
         Complete = []
         for sd in self.df_import_short['submitdate'].isnull():
             if sd == True:
-                Complete.append('no')
+                Complete.append(False)
             else:
-                Complete.append('yes')
+                Complete.append(True)
         ###Duration
         Duration = []
         endDate_TimeObj = 0
@@ -268,8 +280,8 @@ class _ETL_Pipeline(object):
         ###Datenzuweisung
         self.df_Responses['Duration'] =Duration
         self.df_Responses['Complete'] =Complete
-        self.df_Responses['SurveyID'] = SID
-        self.df_Responses['SurveyID_LS'] = SID_LS
+        self.df_Responses['Survey_Name'] = SID
+        self.df_Responses['SurveyID'] = SID_LS
         self.df_Responses['token'] = token
         self.df_Responses['ParticipantID'] = ParticipantID
         self.df_Responses['DateSent'] = self.df_import_short['submitdate']
@@ -294,25 +306,25 @@ class _ETL_Pipeline(object):
         self.df_Responses['R3'] = self.df_import_short['G02Q08[SQ003]']
         self.df_Responses['M1'] = self.TransformResponses(self.df_import_short['G03Q09']) #Frage: maßnhame teilngenommen?
         self.df_Responses['MQ1'] = self.TransformResponses(self.df_import_short['G03Q10[SQ001]'])
-        self.df_Responses['MQ1_Symbol'] = self.TransformResponses_Symbol(self.df_import_short['G03Q10[SQ001]'])
         self.df_Responses['MO1'] = self.df_import_short['G03Q11']
         self.df_Responses['AvgA1'] = self.get_AvgQuestions(self.df_Responses, ['Q1','Q2','Q3','Q4'])
         self.df_Responses['AvgA3'] = self.get_AvgQuestions(self.df_Responses, ['Q5','Q6','Q7','Q8','Q9','Q10'])
         self.df_Responses['AvgAll'] = self.get_AvgQuestions(self.df_Responses, ['Q1','Q2','Q3','Q4','Q5','Q6','Q7','Q8','Q9','Q10'])
-        self.df_Responses['Q1_Symbol'] = self.TransformResponses_Symbol(self.df_import_short['G02Q03[SQ001]'])
-        self.df_Responses['Q2_Symbol'] = self.TransformResponses_Symbol(self.df_import_short['G02Q03[SQ002]'])
-        self.df_Responses['Q3_Symbol'] = self.TransformResponses_Symbol(self.df_import_short['G02Q03[SQ003]'])
-        self.df_Responses['Q4_Symbol'] = self.TransformResponses_Symbol(self.df_import_short['G02Q07[SQ001]'])
-        self.df_Responses['Q5_Symbol'] = self.TransformResponses_Symbol(self.df_import_short['G04Q12[SQ001]'])
-        self.df_Responses['Q6_Symbol'] = self.TransformResponses_Symbol(self.df_import_short['G04Q12[SQ002]'])
-        self.df_Responses['Q7_Symbol'] = self.TransformResponses_Symbol(self.df_import_short['G04Q12[SQ003]'])
-        self.df_Responses['Q8_Symbol'] = self.TransformResponses_Symbol(self.df_import_short['G04Q13[SQ001]'])
-        self.df_Responses['Q9_Symbol'] = self.TransformResponses_Symbol(self.df_import_short['G04Q13[SQ002]'])
-        self.df_Responses['Q10_Symbol'] = self.TransformResponses_Symbol(self.df_import_short['G04Q13[SQ003]'])
-        self.df_Responses['AvgA1_Symbol'] = self.get_AvgQuestions_Symbol(self.df_Responses, ['Q1','Q2','Q3','Q4'])
-        self.df_Responses['AvgA3_Symbol'] = self.get_AvgQuestions_Symbol(self.df_Responses, ['Q5','Q6','Q7','Q8','Q9','Q10'])
-        self.df_Responses['AvgAll_Symbol'] = self.get_AvgQuestions_Symbol(self.df_Responses, ['Q1','Q2','Q3','Q4','Q5','Q6','Q7','Q8','Q9','Q10'])
-        self.df_Responses = self.organizeDf(self.df_Responses,self.Parameter['teilnehmerData'])
+        #self.df_Responses['Q1_Symbol'] = self.TransformResponses_Symbol(self.df_import_short['G02Q03[SQ001]'])
+        #self.df_Responses['Q2_Symbol'] = self.TransformResponses_Symbol(self.df_import_short['G02Q03[SQ002]'])
+        #self.df_Responses['Q3_Symbol'] = self.TransformResponses_Symbol(self.df_import_short['G02Q03[SQ003]'])
+        #self.df_Responses['Q4_Symbol'] = self.TransformResponses_Symbol(self.df_import_short['G02Q07[SQ001]'])
+        #self.df_Responses['Q5_Symbol'] = self.TransformResponses_Symbol(self.df_import_short['G04Q12[SQ001]'])
+        #self.df_Responses['Q6_Symbol'] = self.TransformResponses_Symbol(self.df_import_short['G04Q12[SQ002]'])
+        #self.df_Responses['Q7_Symbol'] = self.TransformResponses_Symbol(self.df_import_short['G04Q12[SQ003]'])
+        #self.df_Responses['Q8_Symbol'] = self.TransformResponses_Symbol(self.df_import_short['G04Q13[SQ001]'])
+        #self.df_Responses['Q9_Symbol'] = self.TransformResponses_Symbol(self.df_import_short['G04Q13[SQ002]'])
+        # self.df_Responses['Q10_Symbol'] = self.TransformResponses_Symbol(self.df_import_short['G04Q13[SQ003]'])
+        #self.df_Responses['MQ1_Symbol'] = self.TransformResponses_Symbol(self.df_import_short['G03Q10[SQ001]'])
+        # self.df_Responses['AvgA1_Symbol'] = self.get_AvgQuestions_Symbol(self.df_Responses, ['Q1','Q2','Q3','Q4'])
+        # self.df_Responses['AvgA3_Symbol'] = self.get_AvgQuestions_Symbol(self.df_Responses, ['Q5','Q6','Q7','Q8','Q9','Q10'])
+        # self.df_Responses['AvgAll_Symbol'] = self.get_AvgQuestions_Symbol(self.df_Responses, ['Q1','Q2','Q3','Q4','Q5','Q6','Q7','Q8','Q9','Q10'])
+        self.df_Responses = self.organizeDf(self.df_Responses,self.Parameter['teilnehmerData'],self.Parameter['surveyData'])
 
     def createCount(self):
         self.df_Count = pd.DataFrame(columns = self.Count_colNames)
@@ -324,15 +336,15 @@ class _ETL_Pipeline(object):
                         A1=0
                         A3=0
                         All=0
-                        for c in ['--','-','0','+','++']:
+                        for c in [1,2,3,4,5]:
                             if pd.isnull(c) == False:
-                                for q in ['Q1_Symbol','Q2_Symbol','Q3_Symbol','Q4_Symbol','Q5_Symbol']:
+                                for q in ['Q1','Q2','Q3','Q4','Q5']:
                                     A1 = A1 + self.df_Responses[q][self.df_Responses.Department == dep].loc[self.df_Responses.Role == r].loc[self.df_Responses[q] == c].count()
-                                for qq in ['Q6_Symbol','Q7_Symbol','Q8_Symbol','Q9_Symbol','Q10_Symbol']:
+                                for qq in ['Q6','Q7','Q8','Q9','Q10']:
                                     A3 = A3 + self.df_Responses[qq][self.df_Responses.Department == dep].loc[self.df_Responses.Role == r].loc[self.df_Responses[qq] == c].count()
-                                All = A1 + A3 + self.df_Responses["MQ1_Symbol"][self.df_Responses.Department == dep].loc[self.df_Responses.Role == r].loc[self.df_Responses['MQ1_Symbol'] == c].count()
-                                newLine = [self.df_Responses.SurveyID_LS[1],
-                                    self.df_Responses.SurveyID[1],
+                                All = A1 + A3 + self.df_Responses["MQ1"][self.df_Responses.Department == dep].loc[self.df_Responses.Role == r].loc[self.df_Responses['MQ1'] == c].count()
+                                newLine = [self.df_Responses.SurveyID[1],
+                                    self.df_Responses.Survey_Name[1],
                                     dep,
                                     r,
                                     c,
@@ -351,8 +363,8 @@ class _ETL_Pipeline(object):
             for r in [1,2,3]:
                 perc = self.df_Responses["R"+str(r)].loc[self.df_Responses.ParticipantID == pid].values[0]
                 self.df_pie.loc[i] = [
-                    self.df_Responses.SurveyID_LS.loc[self.df_Responses.ParticipantID == pid].values[0],
                     self.df_Responses.SurveyID.loc[self.df_Responses.ParticipantID == pid].values[0],
+                    self.df_Responses.Survey_Name.loc[self.df_Responses.ParticipantID == pid].values[0],
                     pid,
                     dep,
                     role,
@@ -367,15 +379,15 @@ class _ETL_Pipeline(object):
         JSON_Count = {}
         JSON_Pie = {}
         for line in range(len(self.df_Responses)):
-            docID = str(self.df_Responses.SurveyID_LS.loc[line]) + "_" + str(self.df_Responses.ParticipantID.loc[line])
+            docID = str(self.df_Responses.SurveyID.loc[line]) + "_" + str(self.df_Responses.ParticipantID.loc[line])
             lineJSON = { docID : self.df_Responses.loc[line].to_dict()}
             JSON_Responses.update(lineJSON)
         for line in range(len(self.df_Count)):
-            docID = str(self.df_Count.SurveyID_LS.loc[line]) + "_" + str(self.df_Count.Department.loc[line]) + "_" + str(self.df_Count.Role.loc[line]) + "_" + str(self.df_Count.Category.loc[line])
+            docID = str(self.df_Count.SurveyID.loc[line]) + "_" + str(self.df_Count.Department.loc[line]) + "_" + str(self.df_Count.Role.loc[line]) + "_" + str(self.df_Count.Category.loc[line])
             lineJSON = {docID: self.df_Count.loc[line].to_dict()}
             JSON_Count.update(lineJSON)
         for line in range(len(self.df_pie)):
-            docID = str(self.df_pie.SurveyID_LS.loc[line]) + "_" + str(self.df_pie.ParticipantID.loc[line]) + "_R" + str(self.df_pie.Rx.loc[line])
+            docID = str(self.df_pie.SurveyID.loc[line]) + "_" + str(self.df_pie.ParticipantID.loc[line]) + "_R" + str(self.df_pie.Rx.loc[line])
             lineJSON = {docID : self.df_pie.loc[line].to_dict()}
             JSON_Pie.update(lineJSON)
         JSON_Gesamt.update({'Responses' : JSON_Responses})
