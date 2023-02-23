@@ -1,6 +1,7 @@
 <template>
     <h6>Projekt:</h6>
     <h2>{{ projekt.projektName}}</h2>
+    <router-link v-bind:to="`/projekt/${projekt.projektId}/dashboard` " class="btn btn-primary">Dashboard öffnen</router-link>
     <LoadingComponent v-if="loading" loading=loading />
     <form v-if="!loading" class="mt-4 mb-4 d-flex flex-column">       
         <label>Projektbeschreibung</label>
@@ -76,7 +77,20 @@
         <div class="d-flex flex-row">
             <router-link :to="'/projekt/' + projekt.projektId + '/edit'" class="btn btn-secondary flex-1">Projekt bearbeiten</router-link>
             <button class="btn btn-outline-danger flex-1" @click.prevent="deleteProjekt" type="submit">Projekt löschen</button>
-        </div>   
+        </div>
+        <br />
+            <br />
+            <hr class="hr" />
+            <h6 class="debug" @click="setDebug">Show Debug Info</h6>
+        <div  v-if="debug">
+
+            <div v-for="ma in projekt.mitarbeiters" :key="ma">
+                Umfragen-Array von Mitarbeiter {{ ma.mitarbeiterName }}: 
+                <ul>
+                    <li v-for="umfr in ma.umfrages" :key="umfr"> {{ umfr }} </li>
+                </ul>
+            </div>
+            <div>Projekt-Umfragen: {{ projekt.umfrages }}</div></div>
     </form>
 </template>
 
@@ -95,17 +109,20 @@
             return{
                 loading: false,
                 organisationId: sessionStorage.organisationId,
-                projekt: {}
+                projekt: {},
+                debug: false,
             }
         },
         async created () {
             console.log("sesh storg");
             console.log(sessionStorage.organisationId);
             console.log(this.id)
-
             this.refreshProjekt();
         },
         methods: {
+            setDebug() {
+                this.debug=!this.debug;
+            },
             async refreshProjekt() {
                 this.loading = true;
                 this.projekt = await api.getProjekt(this.projektId);
@@ -150,6 +167,9 @@
 </script>
   
 <style>
+    .debug::hover {
+        cursor:pointer;
+    }
 
     .d-flex {
     gap:10px;

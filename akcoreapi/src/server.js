@@ -1,11 +1,17 @@
 const fs = require('fs/promises')
+const fssync = require('fs')
 const express = require('express')
 const cors = require('cors')
 const bodyParser = require('body-parser')
 const { Sequelize, DataTypes } = require('sequelize')
 const axios = require('axios')
-
+const {exec, spawn} = require('child_process')
+const uuid = require('uuid')
+// const morgan = require('morgan')
 const connection = require('./connection')
+const replace = require('replace-in-file')
+const { Client } = require('@elastic/elasticsearch')
+const { exit } = require('process')
     /* required ./connection.js' structure:
         const db_name = 'akcoredb';
         const db_username = '*****';
@@ -26,8 +32,125 @@ const connection = require('./connection')
     */
 
 
-const LIME_RPC_URL = 'http://localhost/index.php/admin/remotecontrol/';
+const LIME_RPC_URL = 'http://bolarus.wi.uni-potsdam.de/index.php/admin/remotecontrol/';
 const LRPC_LOGGING = true;
+const ERROR_LOG_PATH = __dirname + "/../logs/error.log"
+const LRPC_LOG_PATH = __dirname + "/../logs/lrpc.log"
+
+function initLogs() {
+    return;
+    let dateString = (new Date(Date.now()).toString()).split(" ");
+    let timeString = dateString[1] + " " + dateString[2] + " " + dateString[3] + " " + dateString[4] + " => "
+    
+    fs.writeFile(ERROR_LOG_PATH, timeString + "Server has been started", function(){})
+}
+
+class SurveyFile {
+    constructor(umfrageStartDate, umfrageEndDate, adminName, adminEmail, umfrageTitel, umfrageBeschreibung) {
+        this.umfrageStartDate = umfrageStartDate;
+        this.umfrageEndDate = umfrageEndDate;
+        this.adminName = adminName;
+        this.adminEmail = adminEmail;
+        this.umfrageTitel = umfrageTitel;
+        this.umfrageBeschreibung = umfrageBeschreibung;
+
+        this.filePath = __dirname + "/../assets/limesurvey/tmp." + uuid.v4() + "_survey-import-file_" + ".lss";
+        this.created = false;
+    }
+
+    async createFile() {
+        if (this.created) throw new Error("File has already been created!");
+        let sourceSurveyFilePath = __dirname + '/../assets/limesurvey/base_survey_2.lss'
+        let sourceSurveyFile = await fs.readFile(sourceSurveyFilePath, { encoding: 'UTF-8' });
+        if(!sourceSurveyFile) throw new Error("Some error reading the file");
+
+        // create new temporary import lss-file
+        
+        await fs.writeFile(this.filePath, sourceSurveyFile, function(){}) 
+
+        // replacing survey properties in temporary file
+        let replacements = {
+            "replaceStartDate": {
+                files: this.filePath,
+                from: /<startdate>.*<\/startdate>/,
+                to: "<startdate><![CDATA["+ this.umfrageStartDate + " 00:00:00" +"]]></startdate>",
+            },
+            "replaceEndDate": {
+                files: this.filePath,
+                from: /<expires>.*<\/expires>/,
+                to: "<expires><![CDATA["+ this.umfrageEndDate + " 23:59:59" +"]]></expires>",
+            },
+            "replaceAdminName": {
+                files: this.filePath,
+                from: /<admin>.*<\/admin>/,
+                to: "<admin><![CDATA["+ this.adminName +"]]></admin>",
+            },
+            "replaceAdminEmail": {
+                files: this.filePath,
+                from: /<adminemail>.*<\/adminemail>/,
+                to: "<adminemail><![CDATA["+ this.adminEmail +"]]></adminemail>",
+            },
+            "replaceUmfrageTitel": {
+                files: this.filePath,
+                from: /<surveyls_title>.*<\/surveyls_title>/,
+                to: "<surveyls_title><![CDATA["+ "Stimmungsbarometer für Projekt " + this.umfrageTitel +"]]></surveyls_title>",
+            },
+            "replaceUmfrageBeschreibung": {
+                files: this.filePath,
+                from: /<surveyls_description>.*<\/surveyls_description>/,
+                to: "<surveyls_description><![CDATA["+ this.umfrageBeschreibung +"]]></surveyls_description>",
+            }
+        }
+        for (let replacement of Object.values(replacements)) {
+            console.log(replacement.files);
+            await replace(replacement);
+        }
+
+        this.created = true;
+    }
+
+    getPathToFile() {
+        if (this.destroyed || !this.created) return console.log("No file has been created or it has already been destroyed.");
+        return this.filePath;
+    }
+
+    async destroyFile() {
+        if (!this.created) {
+            throw new Error("No file has been created yet. No file was destroyed.");
+        }
+        if (this.destroyed) {
+            throw new Error("File has already been destroyed");
+        }
+        await fs.unlink(this.filePath);
+        this.destroyed = true;
+    }
+}
+
+
+function getToday() {
+    let d = new Date;
+    let month = d.getMonth() + 1;
+    if (month < 10) {
+        month = "0" + month;
+    } 
+    return '' + `${d.getFullYear()}-${month}-${d.getDate()}`
+}
+
+function handleError(error) {
+    console.log(error);
+    let dateString = (new Date(Date.now()).toString()).split(" ");
+    let timeString = dateString[1] + " " + dateString[2] + " " + dateString[3] + " " + dateString[4] + " => "
+    fs.appendFile(ERROR_LOG_PATH, timeString + error + "\r\n", (error) => {});
+}
+
+function logLRPC(id, response) {
+    if (!LRPC_LOGGING) return;
+    let dateString = (new Date(Date.now()).toString()).split(" ");
+    let timeString = dateString[1] + " " + dateString[2] + " " + dateString[3] + " " + dateString[4] + " => "
+    message = "LRPC-Response for '" + id + "' :: result: " + JSON.stringify(response.result) + " :: error " + JSON.stringify(response.error)
+    console.log(message)
+    fs.appendFile(LRPC_LOG_PATH, timeString + message + "\r\n", (error) => {});
+}
 
 /**
  * Make a HTTP-POST request to the limesurvey rpc using axios HTTP library
@@ -45,12 +168,328 @@ async function lrpc_req(id, method, params) {
         'Content-Type': 'application/json',
         },
     });
-    if (LRPC_LOGGING) console.log("LRPC-Response for '",id,"' ::", response.data);
+    logLRPC(id, response.data)
     return response.data;
 }
 
+class ESAPI {
+    #apiKey = 'eDdSV1o0WUJXUzk3dlFqZi1HY2U6M1R4ZHJEcjFTT3lfTV8teU1LSGM1UQ==';
+    #esNode = 'https://localhost:9200';
+    #client;
+
+    constructor() {
+        this.#client = new Client({
+            node: this.#esNode,
+            auth: {
+              apiKey: this.#apiKey
+            },
+            tls: {
+                ca: fssync.readFileSync(__dirname+'/../pipeline/http_ca.crt'),
+                rejectUnauthorized: false
+              }
+        });
+    }
+    // async #apiHTTPRequest(method, route, data) {
+    //     let retdata;
+    //     await axios.request({
+    //         method: method,
+    //         url: 'http://localhost:5601/kibana/' + route,
+    //         headers: {
+    //             'Content-Type': 'application/json',
+    //             'kbn-xsrf': 'true',
+    //             'Authorization': 'ApiKey eDdSV1o0WUJXUzk3dlFqZi1HY2U6M1R4ZHJEcjFTT3lfTV8teU1LSGM1UQ=='
+    //         },
+    //         data: data,
+    //     }).then(function (response) {
+    //         console.log(response.data);
+    //         retdata = response.data;
+    //     })
+    //     .catch(function (error) {
+    //         console.error(error);
+    //     });
+    //     return retdata;
+    // }   
+
+    // async addParticipantResponse(projektId, participantTokenId, index, document) {
+    //     await this.#client.index({
+    //         index: 'akcore_'+projektId+'_'+index,
+    //         id:participantTokenId,
+    //         refresh: true,
+    //         document: {
+    //             "SuveryID": 99,
+    //             "Department": "Zentrallogistik",
+    //             "ParticipantID": 1,
+    //             "Role": "Key-User",
+    //             "PartParticipant": "yes"
+    //           }
+    //       })
+    // }
+
+    //create responses index
+    async createProjektIndices(projektId) {
+        await this.#client.indices.create({
+            "index": "akcore_"+projektId+"_responses",
+            "mappings": {
+              "_meta": {
+                "created_by": "file-data-visualizer"
+              },
+              "properties": {
+                "AvgA1": {
+                  "type": "double"
+                },
+                "AvgA3": {
+                  "type": "double"
+                },
+                "AvgAll": {
+                  "type": "double"
+                },
+                "Complete": {
+                  "type": "keyword"
+                },
+                "DateSent": {
+                  "type": "date",
+                  "format": "iso8601"
+                },
+                "Department": {
+                  "type": "keyword"
+                },
+                "Duration": {
+                  "type": "long"
+                },
+                "M1": {
+                  "type": "keyword"
+                },
+                "MO1": {
+                  "type": "keyword"
+                },
+                "MQ1": {
+                  "type": "long"
+                },
+                "O1": {
+                  "type": "keyword"
+                },
+                "O2": {
+                  "type": "keyword"
+                },
+                "O3": {
+                  "type": "keyword"
+                },
+                "O4": {
+                  "type": "keyword"
+                },
+                "PartParticipant": {
+                  "type": "keyword"
+                },
+                "ParticipantID": {
+                  "type": "long"
+                },
+                "Q1": {
+                  "type": "long"
+                },
+                "Q10": {
+                  "type": "long"
+                },
+                "Q2": {
+                  "type": "long"
+                },
+                "Q3": {
+                  "type": "long"
+                },
+                "Q4": {
+                  "type": "long"
+                },
+                "Q5": {
+                  "type": "long"
+                },
+                "Q6": {
+                  "type": "long"
+                },
+                "Q7": {
+                  "type": "long"
+                },
+                "Q8": {
+                  "type": "long"
+                },
+                "Q9": {
+                  "type": "long"
+                },
+                "R1": {
+                  "type": "long"
+                },
+                "R2": {
+                  "type": "long"
+                },
+                "R3": {
+                  "type": "long"
+                },
+                "Role": {
+                  "type": "keyword"
+                },
+                "SurveyID": {
+                  "type": "long"
+                },
+                "column1": {
+                  "type": "long"
+                }
+              }
+            }
+            }).then(function(resp) {
+                console.log(`Successfully created index akcore_${projektId}_responses!`);
+                console.log(JSON.stringify(resp, null, 4));
+            }, function(err) {
+                console.trace(err.message);
+            });
+          //create pie index
+          await this.#client.indices.create({
+            "index": "akcore_"+projektId+"_pie",
+            "mappings": {
+                "_meta": {
+                  "created_by": "file-data-visualizer"
+                },
+                "properties": {
+                  "Department": {
+                    "type": "keyword"
+                  },
+                  "ParticipantID": {
+                    "type": "long"
+                  },
+                  "Percent": {
+                    "type": "long"
+                  },
+                  "Role": {
+                    "type": "keyword"
+                  },
+                  "Rx": {
+                    "type": "long"
+                  },
+                  "SurveyID": {
+                    "type": "long"
+                  }
+                }
+              }
+            }).then(function(resp) {
+                console.log(`Successfully created index akcore_${projektId}_pie!`);
+                console.log(JSON.stringify(resp, null, 4));
+              }, function(err) {
+                console.trace(err.message);
+              });
+          // create count index
+          await this.#client.indices.create({
+            "index": "akcore_"+projektId+"_count",
+            "mappings": {
+                "_meta": {
+                  "created_by": "file-data-visualizer"
+                },
+                "properties": {
+                  "Category": {
+                    "type": "long"
+                  },
+                  "CountA1": {
+                    "type": "long"
+                  },
+                  "CountA3": {
+                    "type": "long"
+                  },
+                  "CountAll": {
+                    "type": "long"
+                  },
+                  "Department": {
+                    "type": "keyword"
+                  },
+                  "Role": {
+                    "type": "keyword"
+                  },
+                  "SurveyID": {
+                    "type": "long"
+                  }
+                }
+              }
+            }).then(function(resp) {
+                console.log(`Successfully created index akcore_${projektId}_count!`);
+                console.log(JSON.stringify(resp, null, 4));
+              }, function(err) {
+                console.trace(err.message);
+              });
+    }
+
+    async deleteProjectIndices(projektId) {
+        await this.#client.indices.delete({
+            index: "akcore_"+projektId+"_count" 
+        }).then(function(resp) {
+            console.log(`Successfully deleted index akcore_${projektId}_count!`);
+            console.log(JSON.stringify(resp, null, 4));
+          }, function(err) {
+            console.trace(err.message);
+          });;
+        await this.#client.indices.delete({
+            index: "akcore_"+projektId+"_pie" 
+        }).then(function(resp) {
+            console.log(`Successfully deleted index akcore_${projektId}_pie!`);
+            console.log(JSON.stringify(resp, null, 4));
+          }, function(err) {
+            console.trace(err.message);
+          });
+        await this.#client.indices.delete({
+            index: "akcore_"+projektId+"_responses" 
+        }).then(function(resp) {
+            console.log(`Successfully deleted index akcore_${projektId}_responses!`);
+            console.log(JSON.stringify(resp, null, 4));
+          }, function(err) {
+            console.trace(err.message);
+          });
+    }
+
+    async writeDataToDocument(indexId, documentId, data) {
+        console.log("indexId:",indexId);
+        console.log("documentId:",documentId);
+        console.log("data:",data);
+        return null;
+
+    }
+    
+    async getIndex() {
+        let result = await this.#client.search({
+            index: 'akcore-projekt_01_umfr_01_responses',
+            query: {
+              match: {
+                SuveryID: 99
+              }
+            }
+          })
+        
+        console.log(result.hits.hits)
+    }
+
+    async setIndexReadOnly(index) {
+        const indexName ="akcore_dev_"+index;
+        const settings = {
+            index: {
+                blocks: {
+                    read_only: false
+                }
+            }
+        };
+        await this.#client.indices.putSettings({ "index": indexName, body: settings });
+    }
+
+    // async copyIndecesToProjektSpace(projektId) {
+    //     await this.#client.indices.clone({
+    //         "index": 'akcore_dev_responses',
+    //         "target": 'akcore_'+projektId+"_responses"
+    //     });
+    //     await this.#client.indices.clone({
+    //         "index": 'akcore_dev_count',
+    //         "target": 'akcore_'+projektId+"_count"
+    //     });
+    //     await this.#client.indices.clone({
+    //         "index": 'akcore_dev_pie',
+    //         "target": 'akcore_'+projektId+"_pie"
+    //     });
+    // }
+}
+
 /**
- * @class Class representing an interface to the LimeSurvey RPC API (documented as LRPC)
+ * @class Class representing a communication interface to the LimeSurvey RPC API 
  */
 class LRPC {
     #sessionKey;
@@ -77,6 +516,12 @@ class LRPC {
         } catch (error) {
             console.log(error);
         }
+    }
+
+    isActive() {
+        console.log(this.#sessionKey);
+        return this.#activeConnection;
+
     }
     /** 
      * Closes the connection to the LRPC 
@@ -107,6 +552,7 @@ class LRPC {
             let data = await lrpc_req('list_surveys', 'list_surveys', [this.#sessionKey]);
             if (data.error) throw new Error (data.error);
             console.log(data.result);
+            return (data.result);
         } catch (error) {
             throw new Error(error);
         }        
@@ -134,38 +580,109 @@ class LRPC {
      * @param stopDate The stopDate of the survey
      * @returns {Promise} Promise object, represents the surveyId of the created survey
      * */
-    async createSurvey(startDate, stopDate) {
+    async createSurvey(surveyFilePath) {
         return new Promise(async (resolve, reject)  => {
             try {
                 if (!this.#activeConnection) {
                     throw new Error("No active connection! Establish a connection first by calling openConnection()!");
                 }    
 
-                var surveyFile = await fs.readFile(__dirname + '/../assets/limesurvey/base_survey.lss', { encoding: 'base64' });
+                var surveyFile = await fs.readFile(surveyFilePath, { encoding: 'base64' });
                 if(!surveyFile) throw new Error("Some error reading the file");
     
                 let data = await lrpc_req('import_survey', 'import_survey', [this.#sessionKey, surveyFile, 'lss']);
                 if (data.error) throw new Error (data.error);
                 let surveyId = data.result;
-                console.log("Survey created! SurveyId: " + surveyId);
+                // console.log("Survey created! SurveyId: " + surveyId);
                 resolve(surveyId);
              } catch(error) {
                 reject(error);
              }
         })
     }
-
-    async activateTokens(surveyId, attributeData) {
-        console.log("attribute-dataa:", attributeData);
+    
+    async activateSurvey(surveyId) {
+        console.log("activate");
         try {
             if (!this.#activeConnection) {
                 throw new Error("No active connection! Establish a connection first by calling openConnection()!");
             }
-            let data = await lrpc_req('activate tokens, survey ' + surveyId, 'activate_tokens', [this.#sessionKey, surveyId, attributeData]);
+            let data = await lrpc_req('activate survey, survey ' + surveyId, 'activate_survey', [this.#sessionKey, surveyId]);
             if (data.error) throw new Error (data.error);
-            console.log("Participant Table initialized for survey ", surveyId);
+            // console.log("Survey activated; sid:", surveyId);
          } catch(error) {
-            console.error("Participant Table could not be initialized for survey ", surveyId);
+            // console.error("Survey could not be activated; sid:", surveyId);
+            throw new Error(error);
+         }
+    }
+
+    async mailRegisteredParticipants(surveyId) {
+        try {
+            if (!this.#activeConnection) {
+                throw new Error("No active connection! Establish a connection first by calling openConnection()!");
+            }
+            let data = await lrpc_req('invite participants, survey ' + surveyId, 'mail_registered_participants', [this.#sessionKey, surveyId, [/*use default conditions*/]]);
+            if (data.error) throw new Error (data.error);
+            // console.log("Participant Table initialized for survey ", surveyId);
+         } catch(error) {
+            // console.error("Participant Table could not be initialized for survey ", surveyId);
+            throw new Error(error);
+         }
+    }
+
+    async mailRegisteredParticipant(surveyId, participantToken) {
+        try {
+            if (!this.#activeConnection) {
+                throw new Error("No active connection! Establish a connection first by calling openConnection()!");
+            }
+            let data = await lrpc_req('invite participants, survey ' + surveyId, 'mail_registered_participants', [this.#sessionKey, surveyId, participantToken]);
+            if (data.error) throw new Error (data.error);
+            // console.log("Participant Table initialized for survey ", surveyId);
+         } catch(error) {
+            // console.error("Participant Table could not be initialized for survey ", surveyId);
+            throw new Error(error);
+         }
+    }
+
+    async inviteParticipants(surveyId, participantTokens, pendingOnly) {
+        try {
+            if (!this.#activeConnection) {
+                throw new Error("No active connection! Establish a connection first by calling openConnection()!");
+            }
+            let data = await lrpc_req('invite participants, survey ' + surveyId, 'invite_participants', [this.#sessionKey, surveyId, participantTokens, pendingOnly]);
+            if (data.error) throw new Error (data.error);
+            // console.log("participants invited ", surveyId);
+         } catch(error) {
+            // console.error("Participants not invited ", surveyId);
+            throw new Error(error);
+         }
+    }
+
+    async remindParticipants(surveyId) {
+        try {
+            if (!this.#activeConnection) {
+                throw new Error("No active connection! Establish a connection first by calling openConnection()!");
+            }
+            let data = await lrpc_req('remind participants, survey ' + surveyId, 'remind_participants', [this.#sessionKey, surveyId]);
+            if (data.error) throw new Error (data.error);
+            // console.log("participants invited ", surveyId);
+         } catch(error) {
+            // console.error("Participants not invited ", surveyId);
+            throw new Error(error);
+         }
+    }
+
+    async activateTokens(surveyId, attributeData) {
+        console.log("attribute-data:", attributeData);
+        try {
+            if (!this.#activeConnection) {
+                throw new Error("No active connection! Establish a connection first by calling openConnection()!");
+            }
+            let data = await lrpc_req('activate tokens, survey ' + surveyId, 'activate_tokens', [this.#sessionKey, surveyId/*, attributeData*/]);
+            if (data.error) throw new Error (data.error);
+            // console.log("Participant Table initialized for survey ", surveyId);
+         } catch(error) {
+            // console.error("Participant Table could not be initialized for survey ", surveyId);
             throw new Error(error);
          }
     }
@@ -176,17 +693,35 @@ class LRPC {
                 throw new Error("No active connection! Establish a connection first by calling openConnection()!");
             }
 
-            let data = await lrpc_req('add participant, survey ' + surveyId, 'add_participants', [this.#sessionKey, surveyId, participantData]);
+            var data = await lrpc_req('add participant, survey ' + surveyId, 'add_participants', [this.#sessionKey, surveyId, participantData]); // not adding participant data. no longer used, since pipeline adds this to the data.
             if (data.error) throw new Error (data.error);
-            console.log(participantData.length, "participant(s) added for survey", surveyId);
+            // console.log(participantData.length, "participant(s) added for survey", surveyId);
             return (data.result[0].token);
          } catch(error) {
-            console.error("Participant could not be added for survey ", surveyId);
-            throw new Error(error);
+            console.error(data)
+            // console.error("Participant could not be added for survey ", surveyId);
+            if (error.response) {
+                // The request was made and the server responded with a status code
+                // that falls out of the range of 2xx
+                console.log(error.response.data);
+                console.log(error.response.status);
+                console.log(error.response.headers);
+              } else if (error.request) {
+                // The request was made but no response was received
+                // `error.request` is an instance of XMLHttpRequest in the browser and an instance of
+                // http.ClientRequest in node.js
+                console.log(error.request);
+              } else {
+                // Something happened in setting up the request that triggered an Error
+                console.log('Error', error.message);
+              }
+              console.log(error.config);
          }
     }
 
     async deleteSurvey(surveyId) {
+        console.log("deleting");
+        if(!surveyId) return "No surveyId specified."
         try {
             if (!this.#activeConnection) {
                 throw new Error("No active connection! Establish a connection first by calling openConnection()!");
@@ -200,6 +735,69 @@ class LRPC {
             throw new Error(error);
          }
     }
+
+    async listParticipants(surveyId) {
+        try {
+            if (!this.#activeConnection) {
+                throw new Error("No active connection! Establish a connection first by calling openConnection()!");
+            }
+            let data = await lrpc_req('list_participants, survey '+surveyId, 'list_participants', [this.#sessionKey, surveyId, 0, 10000, false, ["attribute_1", "attribute_2"]]);
+            if (data.error) 
+            console.log(data.result);
+            return(data.result);
+        } catch (error) {
+            console.log(error);
+        }  
+    }
+
+    async updateParticipant(surveyId, participantToken, participantData) {
+        try {
+            if (!this.#activeConnection) {
+                throw new Error("No active connection! Establish a connection first by calling openConnection()!");
+            }
+
+            var data = await lrpc_req('set_participant_properties, survey ' + surveyId, 'set_participant_properties', [this.#sessionKey, surveyId, participantToken, participantData]); // not adding participant data. no longer used, since pipeline adds this to the data.
+            if (data.error) throw new Error (data.error);
+            // console.log(participantData.length, "participant(s) added for survey", surveyId);
+            return (data.result[0].token);
+         } catch(error) {
+            console.error(data)
+            // console.error("Participant could not be added for survey ", surveyId);
+            if (error.response) {
+                // The request was made and the server responded with a status code
+                // that falls out of the range of 2xx
+                console.log(error.response.data);
+                console.log(error.response.status);
+                console.log(error.response.headers);
+              } else if (error.request) {
+                // The request was made but no response was received
+                // `error.request` is an instance of XMLHttpRequest in the browser and an instance of
+                // http.ClientRequest in node.js
+                console.log(error.request);
+              } else {
+                // Something happened in setting up the request that triggered an Error
+                console.log('Error', error.message);
+              }
+        }
+    }
+
+    // async updateParticipant(surveyId, participantToken, attributeData) {
+    //     try {
+    //         if (!this.#activeConnection) {
+    //             throw new Error("No active connection! Establish a connection first by calling openConnection()!");
+    //         }
+    //         let data = await lrpc_req('set_participant_properties, survey '+surveyId, 'set_participant_properties', [this.#sessionKey, surveyId, participantToken, attributeData]);
+    //         if (data.error) 
+    //         console.log(data.result);
+    //         console.log(surveyId)
+    //         return(data.result);
+            
+    //     } catch (error) {
+    //         console.log(error);
+    //         console.log(surveyId)
+    //     }
+
+    // }
 
     connectionIsActive () {
         return this.#activeConnection;
@@ -217,7 +815,8 @@ const HTTP = {
     OK: 200, 
     CREATED: 201, 
     BAD_REQUEST: 400, 
-    ENTITY_NOT_FOUND: 406,
+    NOT_FOUND: 404,
+    NOT_ACCEPTABLE: 406,
     INTERNAL_ERROR: 500,
 }
 
@@ -240,7 +839,7 @@ let akcoredb = new Sequelize(
 
 // Establishing a connection with sequlalize to the mysql "sequalizedb" database
 akcoredb.authenticate().then(() => {
-    console.log('Connection has been established successfully.');
+    console.log('Connection to the database has been established successfully.');
 }).catch((error) => {
     console.error('Unable to connect to the database: ', error);
 });
@@ -274,6 +873,24 @@ const Mitarbeiter = akcoredb.define('mitarbeiter', {
     timestamps: false
 });
 
+// const Account = akcoredb.define('mitarbeiter', {
+//     accountId:{
+//         type: DataTypes.INTEGER,
+//         autoIncrement: true
+//     },
+//     accountName:{
+//         type: DataTypes.STRING
+//     },
+//     accountPasswort:{
+//         type: DataTypes.STRING
+//     },
+//     accountType: {
+//         type: DataTypes.STRING
+//     }
+// }, {
+//     timestamps: false
+// });
+
 const Abteilung = akcoredb.define('abteilung', {
     abteilungId: {
         type: DataTypes.INTEGER,
@@ -283,7 +900,6 @@ const Abteilung = akcoredb.define('abteilung', {
     abteilungName: {
         type: DataTypes.STRING,
         allowNull: false,
-        unique: true
     }
 }, {
     timestamps: false
@@ -309,6 +925,9 @@ const Projekt = akcoredb.define('projekt', {
     projektEndDate: {
         type: DataTypes.DATEONLY
     },
+    projektKibanaDashboardId: {
+        type: DataTypes.STRING,
+    }
 }, {
     timestamps: false
 });
@@ -336,14 +955,23 @@ const ProjektTeilnahme = akcoredb.define('projektTeilnahme', {
     mitarbeiterRolle:{
         type: DataTypes.STRING
     },
-    limesurveyTokenId:{
-        type: DataTypes.STRING
-    },
 }, {
     timestamps: false
 });
 
-// Creating associations:
+const FuelltAus = akcoredb.define('fuelltAus', {
+    mitarbeiterLimesurveyTokenId:{
+        type: DataTypes.STRING
+    },
+    projektId: {
+        type: DataTypes.INTEGER
+    }
+}, {
+    timestamps: false
+});
+
+
+// Defining associations:
 // Organisation 1 :: n Mitarbeiter
 Organisation.hasMany(Mitarbeiter, {foreignKey: 'organisationId'});
 Mitarbeiter.belongsTo(Organisation, {foreignKey: 'organisationId'});
@@ -368,10 +996,11 @@ Umfrage.belongsTo(Projekt, {foreignKey: 'projektId'});
 Projekt.belongsToMany(Mitarbeiter, { through: ProjektTeilnahme });
 Mitarbeiter.belongsToMany(Projekt, { through: ProjektTeilnahme });
 
-
+// Mitarbeiter m :: n Umfrage
+Mitarbeiter.belongsToMany(Umfrage, { through: FuelltAus });
+Umfrage.belongsToMany(Mitarbeiter, { through: FuelltAus });
 
 // Mitarbeiter.belongsToMany(Projekt, { through: 'nimmtTeil' })
-
 
 // Create REST API endpoints
 // C for Create: HTTP POST
@@ -381,111 +1010,182 @@ Mitarbeiter.belongsToMany(Projekt, { through: ProjektTeilnahme });
 
 app.get("/organisations", async (req, res) => {
     console.log("GET /organisations");
-    let organisations = await Organisation.findAll();
-    return res.send(organisations);
+
+    try {
+        let organisations = await Organisation.findAll();
+        return res.status(HTTP.OK).send(organisations);
+    } catch (e) {
+        console.error(e);
+        return res.sendStatus(HTTP.INTERNAL_ERROR);
+    }
 });
 
-app.get("/mitarbeiterAll/:organisationId", async (req, res) => {
-    console.log("GET /mitarbeiterAll/"+req.params.organisationId);
-    let organisationId = req.params.organisationId;
-    if (!organisationId) return res.sendStatus(HTTP.BAD_REQUEST);
-    if(!(await Organisation.findOne({where:{organisationId: organisationId}}))) return res.sendStatus(HTTP.ENTITY_NOT_FOUND);
+/** 
+ * API ENDPOINTS FOR MITARBEITER
+ */
 
-    let mitarbeiter = await Mitarbeiter.findAll({where: { organisationId: organisationId}});
-    return res.send(mitarbeiter);
+app.get("/mitarbeiterAll/:organisationId", async (req, res) => {
+    let organisationId = req.params.organisationId;
+    console.log("GET /mitarbeiterAll/"+organisationId);
+
+    try {
+        if (!organisationId) return res.sendStatus(HTTP.BAD_REQUEST);
+        if(!(await Organisation.findOne({where:{organisationId: organisationId}}))) return res.sendStatus(HTTP.NOT_FOUND);
+
+        let mitarbeiter = await Mitarbeiter.findAll({where: { organisationId: organisationId}, include: [Umfrage, Projekt]});
+        return res.send(mitarbeiter);
+
+    } catch (e) {
+        handleError(e);
+        return res.sendStatus(HTTP.INTERNAL_ERROR);
+    }
 });
 
 app.post("/mitarbeiter", async (req, res) => {
     console.log("POST /mitarbeiter");
-    data = req.body; // the data sent by the client in request body
-    console.log("incoming request: ", data);
 
-    if( !data.mitarbeiterName || !data.mitarbeiterEmail || !data.abteilungId) return res.sendStatus(HTTP.BAD_REQUEST); 
+    try {
+        data = req.body; // the data sent by the client in request body
+        if( !data.mitarbeiterName || !data.mitarbeiterEmail || !data.abteilungId || !data.organisationId ) return res.sendStatus(HTTP.BAD_REQUEST); 
 
-    await Mitarbeiter.create({ 
-        mitarbeiterName: data.mitarbeiterName, 
-        mitarbeiterEmail: data.mitarbeiterEmail, 
-        abteilungId: data.abteilungId, 
-        organisationId: data.organisationId
-    });
+        await Mitarbeiter.create({ 
+            mitarbeiterName: data.mitarbeiterName, 
+            mitarbeiterEmail: data.mitarbeiterEmail, 
+            abteilungId: data.abteilungId, 
+            organisationId: data.organisationId
+        });
 
-    return res.sendStatus(HTTP.CREATED);
+        return res.sendStatus(HTTP.CREATED);
+
+    } catch (e) {
+        handleError(e);
+        return res.sendStatus(HTTP.INTERNAL_ERROR);
+    }    
 });
 
 app.put("/mitarbeiter", async (req, res) => {
     console.log("PUT /mitarbeiter");
-    // update a mitarbeiter at specific mitarbeiterId
-    data = req.body; // the data sent by the client in request body
 
-    if(!data.mitarbeiterName || !data.mitarbeiterEmail || !data.mitarbeiterAbteilung) return res.sendStatus(HTTP.BAD_REQUEST);
+    try {
+        // update a mitarbeiter at specific mitarbeiterId
+        data = req.body; // the data sent by the client in request body
 
-    await Mitarbeiter.update({ 
-        mitarbeiterName: data.mitarbeiterName, 
-        mitarbeiterEmail: data.mitarbeiterEmail, 
-        mitarbeiterAbteilung: data.mitarbeiterAbteilung 
-    }, { where: { mitarbeiterId: data.mitarbeiterId } })
-    .then(result => {
-        return res.sendStatus(HTTP.CREATED);
-    })
-    .catch(result => {
-        return res.sendStatus(HTTP.ENTITY_NOT_FOUND);
-    })
+        if(!data.mitarbeiterName || !data.mitarbeiterEmail || !data.abteilungId) return res.sendStatus(HTTP.BAD_REQUEST);
+
+        // let wtf = await Umfrage.findAll({
+        //     include: [FuelltAus]
+        // })
+        let result = await Mitarbeiter.findOne({
+            where: { mitarbeiterId: data.mitarbeiterId },
+            include: [Umfrage, Projekt] 
+        })
+        .then(async result => {
+            let mitarbeiter = result;
+            // console.log("result", result);
+            console.log(mitarbeiter.umfrages);
+            console.log(mitarbeiter.projekts);
+
+            if ( mitarbeiter.mitarbeiterEmail != data.mitarbeiterEmail || mitarbeiter.mitarbeiterName != data.mitarbeiterName ) {
+                let client = new LRPC();
+                await client.openConnection();
+                for (umfr of mitarbeiter.umfrages) {
+                    await client.updateParticipant(umfr.umfrageLimesurveyId, umfr.fuelltAus.mitarbeiterLimesurveyTokenId, ["email = test",]);
+                }                
+                await client.closeConnection();
+            }
+
+            mitarbeiter.update({ 
+                mitarbeiterName: data.mitarbeiterName, 
+                mitarbeiterEmail: data.mitarbeiterEmail, 
+                abteilungId: data.abteilungId
+            }, { where: { mitarbeiterId: data.mitarbeiterId } })
+            return res.sendStatus(HTTP.CREATED);
+        })
+        .catch(error => {
+            throw new Error(e);
+        })
+    } catch (e) {
+        handleError(e);
+        return res.sendStatus(HTTP.INTERNAL_ERROR);
+    }
 });
 
 app.delete("/mitarbeiter/:mitarbeiterId", async (req, res)  => {    
-    console.log("DELETE /mitarbeiter");
-    // DELETE a mitarbeiter for specific mitarbeiterId
-    let success = await Mitarbeiter.destroy({
-        where: {mitarbeiterId: req.params.mitarbeiterId}
-    });
+    let mitarbeiterId = req.params.mitarbeiterId;
+    console.log("DELETE /mitarbeiter/"+mitarbeiterId);
+    
+    try {
+        // DELETE a mitarbeiter for specific mitarbeiterId
+        let success = await Mitarbeiter.destroy({
+            where: {mitarbeiterId: mitarbeiterId}
+        });
 
-    if (!success) return res.sendStatus(HTTP.ENTITY_NOT_FOUND);
-    return res.sendStatus(HTTP.OK);
+        if (!success) return res.sendStatus(HTTP.NOT_FOUND);
+        return res.sendStatus(HTTP.OK);
+        
+    } catch (e) {
+        handleError(e);
+        return res.status(HTTP.INTERNAL_ERROR).send(e);
+    }
 });
 
+/** 
+ * API ENDPOINTS FOR PROJEKTE 
+ */
 app.get("/projekte/:organisationId", async (req, res) => {
-    console.log("GET /projekte/"+req.params.organisationId);
-    // READ all projekte for specific organisationId
     let organisationId = req.params.organisationId;
+    console.log("GET /projekte/"+organisationId);
 
-    if (!organisationId) return res.sendStatus(HTTP.BAD_REQUEST);
-    
-    let projekte = await Projekt.findAll({
-        where: { organisationId: organisationId }, 
-        include: [Mitarbeiter, Umfrage]
-    });
+    try {
+        // READ all projekte for specific organisationId      
+        let projekte = await Projekt.findAll({
+            where: { organisationId: organisationId }, 
+            include: [Mitarbeiter, Umfrage]
+        });
+        return res.send(projekte);
 
-    return res.send(projekte);
+    } catch (e) {
+        handleError(e);
+        return res.status(HTTP.INTERNAL_ERROR).send(e);
+    }
 });
 
 app.get("/projekt/:projektId", async(req, res) => {
-    try {
-        var projektId = req.params.projektId;
-    } catch (e) {
-        return res.sendStatus(HTTP.BAD_REQUEST);
-    }
-
-    const result = await Projekt.findOne({
-        where: {projektId: projektId},
-        include: [{ 
-            model: Mitarbeiter, 
-            include: [Abteilung]
-        }, {
-            model: Umfrage
-        }]
-    });
+    let projektId = req.params.projektId;
+    console.log("GET /projekt/" + projektId);
     
-    // const result = await Projekt.findOne({
-    //     where: { projektId: projektId },
-    //     include: [Mitarbeiter, Umfrage]
-    // });
+    try {
+        const result = await Projekt.findOne({
+            where: {projektId: projektId},
+            include: [{ 
+                model: Mitarbeiter, 
+                include: [Abteilung, {
+                    model: Umfrage,
+                    where: { projektId: projektId }
+                }]
+            }, {
+                model: Umfrage
+            }]
+        });
+        
+        // const result = await Projekt.findOne({
+        //     where: { projektId: projektId },
+        //     include: [Mitarbeiter, Umfrage]
+        // });
 
-    if (!result) return res.sendStatus(HTTP.ENTITY_NOT_FOUND);
-    return res.send(result);
+        if (!result) return res.sendStatus(HTTP.NOT_FOUND);
+        return res.send(result);
+
+    } catch (e) {
+        handleError(e);
+        return res.status(HTTP.INTERNAL_ERROR).send(e);
+    }
 })
 
 app.post("/projekt", async (req, res) => {
+    console.log("POST /projekt");
     let client;
+    
     try {
         data = req.body; // the data sent by the client in request body
 
@@ -498,27 +1198,34 @@ app.post("/projekt", async (req, res) => {
                 console.log("bad request")
                 return res.sendStatus(HTTP.BAD_REQUEST);
         }
-    
-        var projekt = await Projekt.create(data);
+        data.projektKibanaDashboardId = "";
+        // create new projekt
+        let projekt = await Projekt.create(data);
 
         // Opening a connection to LimeSurvey RPC
         client = new LRPC();
         await client.openConnection();
+        console.log(client.isActive());
 
-        var surveyIds = []; // array of created surveyIds
+        // let surveyIds = []; // array of created surveyIds
+        // adding all umfragen to projekt
         for (u of data.umfragen) {
-            await client.createSurvey(u.startDate, u.stopDate)
-            .then( async surveyId => {          
-                await client.activateTokens(surveyId, [1,2]);    
-                surveyIds.push(surveyId); 
+            let surveyFile = new SurveyFile(u.umfrageStartDate, u.umfrageEndDate, "AK Core Admin", "nifranz@uni-potsdam.de", projekt.projektName, projekt.projektBeschreibung);
+            await surveyFile.createFile(); // creating the file in fs
+            await client.createSurvey(surveyFile.getPathToFile())
+            .then( async surveyId => {     
+                await client.activateSurvey(surveyId);     
+                await client.activateTokens(surveyId, [1,2]);                
+                // surveyIds.push(surveyId); 
                 u.umfrageLimesurveyId = surveyId;
-                let umfrage = await Umfrage.create(u);;
+                let umfrage = await Umfrage.create(u);
                 await projekt.addUmfrage(umfrage);
             }).catch(error => {
-                throw new Error(error);
+                handleError(error);
             });
+            surveyFile.destroyFile();
         }
-        let projektTeilnehmer = [];
+        // adding all teilnehmer to projekt
         for (teiln of data.teilnehmer) {
             console.log("Teilnehmer-Data:", teiln);
             let teilnId = teiln.mitarbeiterId;
@@ -528,36 +1235,53 @@ app.post("/projekt", async (req, res) => {
             });
             await projekt.addMitarbeiter(teilnehmer, { through: { mitarbeiterRolle: teiln.mitarbeiterRolle } });
         }
-        projekt = await Projekt.findOne({
+
+        // get all newly created projektTeilnehmer and projektUmfragen from projekt
+        projekt = await Projekt.findOne({ 
             where: {projektId: projekt.projektId},
-            include: { 
+            include: [{ 
                 model: Mitarbeiter, 
                 include: [Abteilung]
-            }
+            }, { model: Umfrage }]
         });
-        projektTeilnehmer = projekt.mitarbeiters;
+        let projektTeilnehmer = projekt.mitarbeiters;
+        let projektUmfragen = projekt.umfrages;       
 
-        // adding participants to survey in limesurvey
+        // adding participants to survey in limesurvey and write token id for each mitarbeiter in database
         for (let teilnehmer of projektTeilnehmer) {
-            for (sId of surveyIds) {
+            for (let umfr of projektUmfragen) {
                 // adding participant to limesurvey
-                let limesurveyTokenId = await client.addParticipants(sId, [ {"lastname":teilnehmer.mitarbeiterName,"firstname":"TBD","email":teilnehmer.mitarbeiterEmail,"attribute_1":teilnehmer.projektTeilnahme.mitarbeiterRolle, "attribute_2":teilnehmer.abteilung.abteilungName} ]);
+                let limesurveyTokenId = await client.addParticipants(umfr.umfrageLimesurveyId, [ {"lastname":"none", "firstname":teilnehmer.mitarbeiterName, "email":teilnehmer.mitarbeiterEmail/*,"attribute_1":teilnehmer.projektTeilnahme.mitarbeiterRolle, "attribute_2":teilnehmer.abteilung.abteilungName*/} ]);
                 console.log("tokenid: ", limesurveyTokenId);
+
                 // writing the limesurveyTokenId to database
-                ProjektTeilnahme.update(
-                    { limesurveyTokenId: limesurveyTokenId }, 
-                    { where: { mitarbeiterMitarbeiterId: teilnehmer.mitarbeiterId, projektProjektId: projekt.projektId } }
-                );
+                teilnehmer.addUmfrage(umfr, { 
+                    through: { 
+                        mitarbeiterLimesurveyTokenId: limesurveyTokenId,
+                        projektId: projekt.projektId 
+                    } 
+                })
+
+                // ProjektTeilnahme.update(
+                //     { limesurveyTokenId: limesurveyTokenId }, 
+                //     { where: { mitarbeiterMitarbeiterId: teilnehmer.mitarbeiterId, projektProjektId: projekt.projektId } }
+                // );
             }
         }
-        console.log("returning HTTP.CREATED");
+        // create kibana spaces and indices
+
+        let esClient = new ESAPI();
+        await createKibanaSpace(projekt.projektId, projekt.projektName);
+        await esClient.createProjektIndices(projekt.projektId);
+
+        console.log("   -> Creating Project successfull");
         return res // the response
             .setHeader('Location', `/projekt/${projekt.projektId}`) // setting location header for the response to the client
-            .set( { 'Access-Control-Expose-Headers': 'location', } )
+            .set( { 'Access-Control-Expose-Headers': 'location', } ) // exposing location header
             .sendStatus(HTTP.CREATED);
-    } 
+    }
     catch (error) {
-        console.log(error);
+        handleError(error);
         return res.sendStatus(HTTP.INTERNAL_ERROR);
     } 
     finally {
@@ -566,7 +1290,10 @@ app.post("/projekt", async (req, res) => {
 });
 
 app.put("/projekt/:projektId", async (req, res) => {
+    let projektId = req.params.projektId;
+    console.log("PUT /projekt/",projektId);
     let client;
+
     try {        
         data = req.body; // the data sent by the client in request body
 
@@ -580,8 +1307,8 @@ app.put("/projekt/:projektId", async (req, res) => {
                 return res.sendStatus(HTTP.BAD_REQUEST);
         }
     
-        var projekt = await Projekt.findOne({where: {projektId: req.params.projektId}});
-        if (!projekt) return res.sendStatus(HTTP.ENTITY_NOT_FOUND);
+        var projekt = await Projekt.findOne({where: {projektId: projektId}});
+        if (!projekt) return res.sendStatus(HTTP.NOT_FOUND);
         // update projekt meta-data
         projekt.set({
             projektName: data.projektName,
@@ -615,10 +1342,13 @@ app.put("/projekt/:projektId", async (req, res) => {
 
         var newSurveyIds = []; // array of newly created surveyIds
         for (u of data.umfragenNew) {
-            await client.createSurvey(u.startDate, u.stopDate)
+            let surveyFile = new SurveyFile(u.umfrageStartDate, u.umfrageEndDate, "AK Core Admin", "nifranz@uni-potsdam.de", projekt.projektName, projekt.projektBeschreibung);
+            await surveyFile.createFile(); // creating the file in fs
+            await client.createSurvey(surveyFile.getPathToFile())
             .then( async surveyId => {          
+                await client.activateSurvey(surveyId);
                 await client.activateTokens(surveyId, [1,2]);    
-                newSurveyIds.push(surveyId); 
+                newSurveyIds.push(""+surveyId); 
                 u.umfrageLimesurveyId = surveyId;
                 let umfrage = await Umfrage.create(u);
                 await projekt.addUmfrage(umfrage);
@@ -639,51 +1369,57 @@ app.put("/projekt/:projektId", async (req, res) => {
             await projekt.addMitarbeiter(teilnehmer, { through: { mitarbeiterRolle: teiln.mitarbeiterRolle } });
         }
 
-        let allProjektTeilnehmer = [];
-        projekt = await Projekt.findOne({
+        projekt = await Projekt.findOne({ 
             where: {projektId: projekt.projektId},
-            include: { 
+            include: [{ 
                 model: Mitarbeiter, 
                 include: [Abteilung]
-            }
+            }, { model: Umfrage }]
         });
-        allProjektTeilnehmer = projekt.mitarbeiters;
+        let allProjektTeilnehmer = projekt.mitarbeiters;
+        let allProjektUmfragen = projekt.umfrages;       
 
-        // adding participants to new surveys in limesurvey
+
+        // console.log(projekt)
+        console.log(newSurveyIds);
+
         for (let teilnehmer of allProjektTeilnehmer) {
-            for (sId of newSurveyIds) {
-                // adding participant to limesurvey
-                let limesurveyTokenId = await client.addParticipants(sId, [ {"lastname":teilnehmer.mitarbeiterName,"firstname":"TBD","email":teilnehmer.mitarbeiterEmail,"attribute_1":teilnehmer.projektTeilnahme.mitarbeiterRolle, "attribute_2":teilnehmer.abteilung.abteilungName} ]);
-                console.log("tokenid: ", limesurveyTokenId);
-                // writing the limesurveyTokenId to database
-                ProjektTeilnahme.update(
-                    { limesurveyTokenId: limesurveyTokenId }, 
-                    { where: { mitarbeiterMitarbeiterId: teilnehmer.mitarbeiterId, projektProjektId: projekt.projektId } }
-                );
-            }
-            // for surveys that existed before the update we add only new participants since the old ones already have been created for these surveys.
-            if (newTeilnehmerMitarbeiterIds.includes(teilnehmer.mitarbeiterId))  {
-                // if the mitarbeiterId of current teilnehmer is included in newTeilnehmerMitarbeiterIds -> add to all presentSurveys
-                for (sId of presentSurveyIds) {
-                    // adding participant to limesurvey
-                    let limesurveyTokenId = await client.addParticipants(sId, [ {"lastname":teilnehmer.mitarbeiterName,"firstname":"TBD","email":teilnehmer.mitarbeiterEmail,"attribute_1":teilnehmer.projektTeilnahme.mitarbeiterRolle, "attribute_2":teilnehmer.abteilung.abteilungName} ]);
+            for (let umfr of allProjektUmfragen) {
+                console.log( newSurveyIds.includes(umfr.umfrageLimesurveyId) )
+                if (newSurveyIds.includes(umfr.umfrageLimesurveyId)) { // add all teilnehmer to new surveys only
+                    // adding all participants to limesurvey
+                    let limesurveyTokenId = await client.addParticipants(umfr.umfrageLimesurveyId, [ {"lastname": "none","firstname":teilnehmer.mitarbeiterName, "email":teilnehmer.mitarbeiterEmail/*,"attribute_1":teilnehmer.projektTeilnahme.mitarbeiterRolle, "attribute_2":teilnehmer.abteilung.abteilungName*/} ]);
                     console.log("tokenid: ", limesurveyTokenId);
+
+                    teilnehmer.addUmfrage(umfr, { 
+                        through: { 
+                            mitarbeiterLimesurveyTokenId: limesurveyTokenId,
+                            projektId: projekt.projektId 
+                        } 
+                    })
+
                     // writing the limesurveyTokenId to database
-                    ProjektTeilnahme.update(
-                        { limesurveyTokenId: limesurveyTokenId }, 
-                        { where: { mitarbeiterMitarbeiterId: teilnehmer.mitarbeiterId, projektProjektId: projekt.projektId } }
-                    );
-                }
+                    
+                } else if (newTeilnehmerMitarbeiterIds.includes(teilnehmer.mitarbeiterId)) { // add only new teilnehmer to only already existing surveys 
+                    let limesurveyTokenId = await client.addParticipants(umfr.umfrageLimesurveyId, [ {"lastname":teilnehmer.mitarbeiterName,"firstname":"TBD","email":teilnehmer.mitarbeiterEmail,"attribute_1":teilnehmer.projektTeilnahme.mitarbeiterRolle, "attribute_2":teilnehmer.abteilung.abteilungName} ]);
+                    teilnehmer.addUmfrage(umfr, { 
+                        through: { 
+                            mitarbeiterLimesurveyTokenId: limesurveyTokenId,
+                            projektId: projekt.projektId 
+                        } 
+                    })
+                }                
             }
         }
+
         console.log("returning HTTP.CREATED");
         return res // the response
             .setHeader('Location', `/projekt/${projekt.projektId}`) // setting location header for the response to the client
             .set( { 'Access-Control-Expose-Headers': 'location', } )
             .sendStatus(HTTP.CREATED);
-    } 
+    }
     catch (error) {
-        console.error(error);
+        handleError(error);
         return res.sendStatus(HTTP.INTERNAL_ERROR);
     } 
     finally {
@@ -692,77 +1428,596 @@ app.put("/projekt/:projektId", async (req, res) => {
 });
 
 app.delete('/projekt/:projektId', async(req,res) => {
+    let projektId = req.params.projektId;
+    console.log("DELETE /projekt/",projektId)
     let client;
     try {
-        let projekt = await Projekt.findOne({where: {projektId: req.params.projektId},include: [Umfrage]});
-        if (!projekt) return res.sendStatus(HTTP.ENTITY_NOT_FOUND);
+        let projekt = await Projekt.findOne({where: {projektId: projektId},include: [Umfrage]});
+        if (!projekt) return res.sendStatus(HTTP.NOT_FOUND);
         var projektUmfragen = projekt.umfrages;
     
         client = new LRPC();
         await client.openConnection();
     
         for (umfr of projektUmfragen) {
+            console.log("lsid:",umfr.umfrageLimesurveyId);
             await client.deleteSurvey(umfr.umfrageLimesurveyId);
+            await umfr.destroy();
         }
+        
+        // deleted related kibana space
+        await deleteKibanaSpace(projekt.projektId);
 
+        // delete related elasticsearch indices
+        let esClient = new ESAPI();
+        await esClient.deleteProjectIndices(projekt.projektId);
+
+        // delete projekt from akcoredb
         await projekt.destroy();
+        
         return res.sendStatus(HTTP.OK);
     } catch (error) {
-        console.error(error);
+        handleError(error);
         return res.sendStatus(HTTP.INTERNAL_ERROR);
     } finally {
         if (client) client.closeConnection();
     }
 });
 
-
-
+/** 
+ * API ENDPOINTS FOR ABTEILUNGEN 
+ */
 app.get("/abteilungen/:organisationId", async(req, res) => {
     console.log("GET /abteilungen/"+req.params.organisationId);
-    let organisationId = req.params.organisationId;
-    if (!organisationId) return res.sendStatus(HTTP.BAD_REQUEST);
-    if(!(await Organisation.findOne({where:{organisationId: organisationId}}))) return res.sendStatus(HTTP.ENTITY_NOT_FOUND);
-
-    let abteilung = await Abteilung.findAll({where: { organisationId: organisationId }});
-
-    return res.send(abteilung);
-}) 
-
-app.get("/lrpc/createSurvey", async (req, res) => {
-    let client = new LRPC();
-    await client.openConnection();
-    
-    console.log("Connection active:", client.connectionIsActive())
     try {
-        // await client.listSurveys();
-        // await client.listUsers();
-        // await client.addParticipants('842869', [ {"lastname":"franz","firstname":"niklas","email":"nf.app@icloud.com","attribute_1":"user", "attribute_2":"1"} ]);
-        return res.sendStatus(HTTP.OK);
-    } catch (err) {
-        console.log(err);
-        return res.sendStatus(HTTP.INTERNAL_ERROR);
-    } finally {
-        await client.closeConnection();
+        let organisationId = req.params.organisationId;
+        if (!organisationId) return res.sendStatus(HTTP.BAD_REQUEST);
+        if(!(await Organisation.findOne({where:{organisationId: organisationId}}))) return res.sendStatus(HTTP.NOT_FOUND);
+
+        let abteilung = await Abteilung.findAll({where: { organisationId: organisationId }, include: [Mitarbeiter]});
+
+        return res.send(abteilung);
+    } catch (e) {
+        handleError(e);
+        return res.status(HTTP.INTERNAL_ERROR).send(e);
     }
 })
 
+app.post("/abteilung/", async(req, res) => {
+    console.log("POST /abteilung");
+    console.log(req.body)
+    try {
+        data = req.body; // the data sent by the client in request body
+        console.log(req.body)
+
+        if( !data.abteilungName || !data.organisationId ) return res.sendStatus(HTTP.BAD_REQUEST); 
+
+        await Abteilung.create({ 
+            abteilungName: data.abteilungName,
+            organisationId: data.organisationId
+        });
+
+        return res.sendStatus(HTTP.CREATED);
+    } catch (e) {
+        handleError(e);
+        res.status(HTTP.INTERNAL_ERROR).send(e);
+    }
+});
+
+app.delete("/abteilung/:abteilungId", async (req, res)  => {  
+    console.log("DELETE /abteilung");
+    try {
+        // DELETE a mitarbeiter for specific mitarbeiterId
+        let abteilung = await Abteilung.findOne({
+            where: {abteilungId: req.params.abteilungId},
+            include: [Mitarbeiter]
+        });
+        if (!abteilung) {
+            return res.sendStatus(HTTP.NOT_FOUND);
+        }
+        if (!abteilung.mitarbeiters.length) {
+            abteilung.destroy();
+            return res.sendStatus(HTTP.OK);
+        } else {
+            return res.sendStatus(HTTP.BAD_REQUEST);
+        }
+    } catch (e) {
+        handleError(e);
+        return res.status(HTTP.INTERNAL_ERROR).send(e);
+    }
+});
+
+/** 
+ * API ENDPOINTS FOR LOGIN VERIFICATION
+ */
+app.post("/verifyLogin", async (req, res) => {
+    console.log("POST /verifyLogin", req.body);
+
+    try {        
+        const ACCOUNTS = [
+            {type: "suadm", accountName: "dev", passwort: "passwort", organisationId: 1},
+
+            {type: "adm", accountName: "dkotarski", passwort: "lswi_test", organisationId: 2},
+            {type: "adm", accountName: "thammes", passwort: "lswi_test", organisationId: 2},
+
+            {type: "cm", accountName: "bbender", passwort: "lswi_test", organisationId: 2},
+            {type: "cm", accountName: "jgonnermann", passwort: "lswi_test", organisationId: 2},
+            {type: "cm", accountName: "cthim", passwort: "lswi_test", organisationId: 2},
+            {type: "cm", accountName: "ngronau", passwort: "lswi_test", organisationId: 2},
+
+            {type: "adm", accountName: "awolf", passwort: "lswi_test", organisationId: 2},
+
+        ]
+
+        let data = req.body; // get data from request body
+        if (!data) return res.sendStatus(HTTP.BAD_REQUEST); // if no body is present send back HTTP error
+
+        let account;
+        for (a of ACCOUNTS) { // check if there is an account matching the requested accountName
+            if (a.accountName == data.accountName) account = a;
+        }
+
+        if (!account) { // if no account is found send back HTTP error
+            console.log("  -> account not found.");
+            return res.sendStatus(HTTP.NOT_FOUND);
+        }
+
+        if (account.passwort == data.passwort) { // if request passwort matches account passwort send back account info
+            console.log("  -> Login sucessfull for account: ", account.accountName);
+            delete account.passwort;
+            return res.status(HTTP.OK).send(account);
+        } else { // if passwort doesnt match account passwort send back http error
+            console.log("  -> Login unsucessfull for account: ", account.accountName);
+            return res.sendStatus(401);
+        }
+
+    } catch (e) {
+        handleError(e);
+        return res.status(HTTP.INTERNAL_ERROR).send(e);
+    }
+});
+
+app.get("/inviteParticipants", async(req, res) => {
+    let client = new LRPC();
+    await client.openConnection();
+    let today = getToday();
+    let umfragen = await Umfrage.findAll({
+        include: {model:Mitarbeiter}
+    });
+    for (umfr of umfragen) {       
+        if (umfr.umfrageStartDate <= today && umfr.umfrageEndDate >= today) {
+            let participantTokens = [];
+            for (ma of umfr.mitarbeiters) {
+                participantTokens.push(ma.fuelltAus.mitarbeiterLimesurveyTokenId);
+            }
+            console.log(umfr.umfrageLimesurveyId,participantTokens);
+            // client.inviteParticipants(umfr.umfrageLimesurveyId);
+            await client.remindParticipants(umfr.umfrageLimesurveyId);
+            await client.mailRegisteredParticipants(umfr.umfrageLimesurveyId);
+        }
+    }
+
+});
+
+app.get("/testInv/:surveyId", async(req,res) => {
+    if (req.params.surveyId == "none") {
+        var surveyId = 161788;
+    } else {
+        var surveyId = req.params.surveyId;
+    }
+    
+    let client = new LRPC();
+    await client.openConnection();
+    await client.remindParticipants(surveyId);
+    // await client.inviteParticipants(surveyId, ["tid = E6UMoIta0zkTMcO"], false);
+    await client.mailRegisteredParticipants(surveyId);
+    await client.closeConnection();
+    return res.sendStatus(HTTP.OK);
+});
+
+app.get("/triggerPipe/:surveyId/:tokenId/:answerId", async(req, res) => {    
+    let surveyId = req.params.surveyId;
+    let tokenId = req.params.tokenId;
+    let answerId = req.params.answerId;
+    console.log("GET /triggerPipe/"+surveyId+"/"+tokenId+"/"+answerId);
+
+    // get mitarbeiter data for pipeline ingestion
+    let umfrage = await Umfrage.findOne({
+        where: { umfrageLimesurveyId: surveyId },
+    });
+    if (!umfrage) return res.sendStatus(HTTP.NOT_FOUND);
+    let projekt = await Projekt.findOne({
+        where: { projektId: umfrage.projektId },
+        include: { 
+            model: Mitarbeiter,
+            include: [{
+                model: Umfrage,
+                where: { umfrageId: umfrage.umfrageId }
+            }, Abteilung]
+         }
+    });
+    if (!projekt) return res.sendStatus(HTTP.NOT_FOUND);
+    let projektMitarbeiter = projekt.mitarbeiters;
+    let mitarbeiterData = {}
+    for (let ma of projektMitarbeiter) {
+        mitarbeiterData[ma.umfrages[0].fuelltAus.mitarbeiterLimesurveyTokenId] = { "participantId": ma.mitarbeiterId, "rolle": ma.projektTeilnahme.mitarbeiterRolle, "abteilung": ma.abteilung.abteilungName };
+    }
+    let surveyData = {"surveyId": surveyId, "surveyStartDate": umfrage.umfrageStartDate, "surveyEndDate": umfrage.umfrageEndDate}
+    let json = { "surveyData": surveyData, "teilnehmerData": mitarbeiterData };
+
+    // create a jsonfile to read from python script with "json" variable as file content
+    let filePath = __dirname + "/../pipeline/tmp." + uuid.v4() + "_survey_" + surveyId + "_mitarbeiter-data.json"
+    await fs.writeFile(filePath, JSON.stringify(json), function(){});
+    await fs.unlink(filePath);
+
+    // exec(`python3 ${__dirname}/../pipeline/pipe.py ${filePath} `, async (error, stdout, stderr) => {
+    //     if (error) {
+    //         console.log('error:', error.message);
+    //         await fs.unlink(filePath);
+    //         return res.sendStatus(HTTP.INTERNAL_ERROR);
+    //     }
+    //     console.log("###########################\nExecuting python script...")
+    //     if (stderr) {            
+    //         console.log('stderr:', stderr);
+    //         await fs.unlink(filePath);
+    //         return res.sendStatus(HTTP.INTERNAL_ERROR);
+    //     }
+    //     console.log("stdout:", stdout);
+    //     console.log("Done!\n###########################")
+    //     await fs.unlink(filePath); // deleting the file after use
+    //     return res.sendStatus(HTTP.OK);
+    // })
+
+    let data = { // emulates the data returned by python script
+        "projektId": projekt.projektId,
+        "responsesTable": {
+            "surveyId01_participantId01": {
+                "spalte1": "value1",
+                "spalte2": "value2"
+            }
+        },
+        "pieTable": {
+        },
+        "countTable": {
+        }
+    }
+    let projektId = data.projektId;
+    let pie = data.pieTable;
+    let count = data.countTable;
+    let responses = data.responsesTable;
+
+    let esClient = new ESAPI();
+
+    // writing all response documents
+    for (let documentId of Object.keys(responses)) {
+        // the documentId is the desired id of an elasticsearch document: one entry of an index In a tabular metaphor, the index is a table, the document is one row in that table. the documentId is used to adress a specific row.
+        let indexId = `akcore_${projektId}_responses`
+        await esClient.writeDataToDocument(indexId, documentId, responses[documentId]);
+    };
+
+    // writing all pie documents
+    for (let documentId of Object.keys(pie)) {
+        // the documentId is the desired id of an elasticsearch document: one entry of an index. In a tabular metaphor, the index is a table, the document is one row in that table. the documentId is used to adress a specific row.
+        let indexId = `akcore_${projektId}_pie`
+        await esClient.writeDataToDocument(indexId, documentId, pie[documentId]);
+    };
+
+    // writing all count documents
+    for (let documentId of Object.keys(count)) {
+        // the documentId is the desired id of an elasticsearch document: one entry of an index In a tabular metaphor, the index is a table, the document is one row in that table. the documentId is used to adress a specific row.
+        let indexId = `akcore_${projektId}count`
+        await esClient.writeDataToDocument(indexId, documentId, count[documentId]);
+    };
+
+    return res.sendStatus(HTTP.OK);
+});
+
+
+
+/** 
+ * EXPERIMENTAL API ENDPOINTS
+ */
+app.get("/testExec/", async(req,res) => {
+    exec(`python3 ${__dirname}/../pipeline/pipe.py `, async (error, stdout, stderr) => {
+        if (error) {
+            console.log('error:', error.message);
+            return res.sendStatus(HTTP.INTERNAL_ERROR);
+        }
+        console.log("###########################\nExecuting python script...")
+        if (stderr) {            
+            console.log('stderr:', stderr);
+            return res.sendStatus(HTTP.INTERNAL_ERROR);
+        }
+        console.log("stdout:", stdout);
+        // data = JSON.pars e(stdout);
+        // console.log(data.a)
+        console.log("Done!\n###########################") // deleting the file after use
+        return res.sendStatus(HTTP.OK);
+    });
+
+    // const pipe = spawn(`python3`,[`${__dirname}/../pipeline/pipe.py`]);
+    // pipe.stdout.on('data', function(data) {
+    //     console.log(data.toString());
+    //     return res.send();
+    // })
+
+    // pipe.stderr.on('data', function(data) {
+    //     console.log(data.toString());
+    //     return res.send();
+    // })
+    
+})
+
+app.get("/kibanaApiCall/:method", async (req, res) => {
+    const response = await axios.get("http://localhost:5601/kibana/s/7/api/saved_objects/dashboard", {
+        headers: {
+        'Content-Type': 'application/json',
+        'kbn-xsrf': 'true',
+        'Authorization': 'ApiKey eDdSV1o0WUJXUzk3dlFqZi1HY2U6M1R4ZHJEcjFTT3lfTV8teU1LSGM1UQ=='
+        },
+    });
+    console.log(response.data.error);
+    console.log(response.data)
+    return res.sendStatus(HTTP.OK);
+});
+
+app.get("/kibanaApiCallDev", async (req, res) => {
+    axios.request({
+        method: 'GET',
+        url: 'http://localhost:5601/kibana/api/spaces/space',
+        headers: {
+            'Content-Type': 'application/json',
+            'kbn-xsrf': 'true',
+            'Authorization': 'ApiKey eDdSV1o0WUJXUzk3dlFqZi1HY2U6M1R4ZHJEcjFTT3lfTV8teU1LSGM1UQ=='
+        },
+         data: {
+                "id": "source",
+                "name": "sourcespace",
+         }
+    }).then(function (response) {
+        console.log(response.data);
+    })
+    .catch(function (error) {
+        console.error(error);
+    });
+    return res.sendStatus(HTTP.OK);
+});
+
+async function deleteKibanaSpace(projektId) {
+    await axios.request({
+        method: 'DELETE',
+        url: 'http://localhost:5601/kibana/api/spaces/space/'+projektId,
+        headers: {
+            'Content-Type': 'application/json',
+            'kbn-xsrf': 'true',
+            'Authorization': 'ApiKey eDdSV1o0WUJXUzk3dlFqZi1HY2U6M1R4ZHJEcjFTT3lfTV8teU1LSGM1UQ=='
+        }
+    }).then(function (response) {
+        console.log(response.data);
+    })
+    .catch(function (error) {
+        console.error(error);
+        return null;
+    });
+}
+
+app.get("/kibDeleteSpace", async (req, res) => {
+    await deleteKibanaSpace("projekt0123");
+    res.sendStatus(HTTP.OK);
+})
+
+async function createKibanaSpace(projektId, projektName) {
+    projektId = projektId + "";
+    // let projId = "proj1";
+    // let projektName = "ERP System"
+    let log = false;
+
+    // creating new kibana space
+    await axios.request({
+        method: 'POST',
+        url: 'http://localhost:5601/kibana/api/spaces/space',
+        headers: {
+            'Content-Type': 'application/json',
+            'kbn-xsrf': 'true',
+            'Authorization': 'ApiKey eDdSV1o0WUJXUzk3dlFqZi1HY2U6M1R4ZHJEcjFTT3lfTV8teU1LSGM1UQ=='
+        },
+         data: {
+                "id": projektId+"",
+                "name": projektName,
+         }
+    }).then(function (response) {
+        if (log) console.log(response.data);
+    })
+    .catch(function (error) {
+        console.error(error);
+        return null;
+    });
+
+    // the source dashboard in kibana; this will be copied to the new kibana project  space
+    let moodboardSourceObject = {
+        id: '66a487c9-6517-445b-85be-f37890b62af2',
+        type: 'dashboard'
+    }
+
+    // copying moodboard object form kibana space "source" to new projekt space
+    await axios.request({
+        method: 'POST',
+        url: 'http://localhost:5601/kibana/s/source/api/spaces/_copy_saved_objects',
+        headers: {
+            'Content-Type': 'application/json',
+            'kbn-xsrf': 'true',
+            'Authorization': 'ApiKey eDdSV1o0WUJXUzk3dlFqZi1HY2U6M1R4ZHJEcjFTT3lfTV8teU1LSGM1UQ=='
+        },
+         data: {
+            spaces: [projektId],
+            objects: [moodboardSourceObject],
+            includeReferences: true
+         }
+    }).then(async function (response) {
+        if (log) console.log(response.data[projektId]);
+        console.log(response.data[projektId].successResults);
+
+        // saving the id of the dashboard (kibana saved object) to projekt database for later reference
+        let projektKibanaDashboardId = "";
+        for (savedObject of response.data[projektId].successResults) {
+            // of all saved objects that have been copied to the new kibana-space: get the one saved object that matches the source dashboard id (moodboardSourceObject) and save its destination id (new object) to db
+            if (savedObject.id == moodboardSourceObject.id) {
+                projektKibanaDashboardId = savedObject.destinationId;
+            }
+        }
+        let projekt = await Projekt.findOne({
+            where: {projektId: projektId}
+        });
+        // save the projektKibanaDashboardId to projekt
+        projekt.set({
+            projektKibanaDashboardId: projektKibanaDashboardId,
+        });
+        await projekt.save();
+    })
+    .catch(function (error) {
+        console.error(error);
+        return null;
+    });
+
+    // get dataview id of the projekt-dataview used for the moodboard in the new space
+    let dataviewId;
+    await axios.request({
+        method: 'GET',
+        url: 'http://localhost:5601/kibana/s/'+projektId+'/api/data_views',
+        headers: {
+            'Content-Type': 'application/json',
+            'kbn-xsrf': 'true',
+            'Authorization': 'ApiKey eDdSV1o0WUJXUzk3dlFqZi1HY2U6M1R4ZHJEcjFTT3lfTV8teU1LSGM1UQ=='
+        },
+    }).then(function (response) {
+        for (dataview of response.data["data_view"]) {
+            if (dataview.name == "AKCORE_DEV") {
+                dataviewId = dataview.id;
+                break;
+            }
+        }
+        if (log) console.log(response.data);
+    })
+    .catch(function (error) {
+        console.error(error);
+        return null;
+    });
+
+    // update projekt-dataview properties "name" and "title". the new title now references the correct projekt indeces, rather the old source indeces.
+    await axios.request({
+        method: 'POST',
+        url: 'http://localhost:5601/kibana/s/'+projektId+'/api/data_views/data_view/'+dataviewId,
+        headers: {
+            'Content-Type': 'application/json',
+            'kbn-xsrf': 'true',
+            'Authorization': 'ApiKey eDdSV1o0WUJXUzk3dlFqZi1HY2U6M1R4ZHJEcjFTT3lfTV8teU1LSGM1UQ=='
+        },
+         data: {
+            // "refresh_fields": true,
+            "data_view": {
+                "title": "akcore_"+projektId+"_*",
+                "name": "akcore_"+projektId+"_dataview"
+            }
+         }
+    }).then(function (response) {
+        if (log) console.log(response.data);
+    })
+    .catch(function (error) {
+        console.error(error);
+        return null;
+    });
+
+    return projektId;
+}
+
+app.get("/testCron", async (req, res) => {
+    console.log("CronCall");
+    return res.status(HTTP.OK).send();
+})
+
+app.get("/testUpdateIndices", async (req, res) => {
+    let data = {
+        "projektId": "abc",
+        "responses": {
+            "surveyId01_participantId01": {
+                "spalte1": "value1",
+                "spalte2": "value2"
+            }
+        },
+        "pie": {
+        },
+        "count": {
+        }
+    }
+    let projektId = data.projektId;
+    let pie = data.pieData;
+    let count = data.countData;
+    let responses = data.responsesData;
+
+    let esClient = new ESAPI();
+
+    for (responseId of Object.keys(responses)) {
+        let indexId = `akcore_${projektId}_responses`
+        let documentId = repsonseId;
+        await esClient.writeDataToDocument(indexId, documentId, responses[responseId]);
+    }
+})
+
+app.get("/testMail", async (req, res) => {
+    console.log("GET /testMail");
+    let i = 2;
+    while (i > 0) {
+        console.log("send ", i)
+        exec(`mail -s "i = ${i}" nf.app@icloud.com <<< "Test Emails i = ${i}"`, async (error, stdout, stderr) => {
+            if (error) {
+                console.log('error:', error.message);
+                return res.sendStatus(HTTP.INTERNAL_ERROR);
+            }
+            if (stderr) {            
+                console.log('stderr:', stderr);
+                return res.sendStatus(HTTP.INTERNAL_ERROR);
+            }
+            console.log("stdout:", stdout);
+        })
+        i -= 1;
+    }
+    console.log("done")
+    return res.status(HTTP.OK).send()
+})
+
+app.get("/pipeTest", async (req, res) => {
+    
+    let projektId = "projekt0123";
+    let projektName = "ERP System";
+
+    let client = new ESAPI();
+    await createKibanaSpace(projektId, projektName);
+    await client.createProjektIndices(projektId);
+    // await client.setIndexReadOnly("count");
+    // await client.setIndexReadOnly("pie");
+    // await client.setIndexReadOnly("responses");
+    
+
+    // await client.copyIndecesToProjektSpace(projektId);
+    
+    return res.sendStatus(HTTP.OK);
+})
+
 akcoredb
-    .sync({ alter: true })
+    .sync({})
     .then(() => {
         app.listen(PORT, async () => {
-             // creating an entry that already exists in the database will result in an error, so we want to catch that error
+            initLogs();
+            // creating an entry that already exists in the database will result in an error, so we want to catch that error
             // this way, we only create that entries when the database is first initialized 
             try { await Organisation.findOrCreate( { where: {organisationId: 1, organisationName: "LSWI-Lehrstuhl" } }); } catch (error) { console.log(error); }
             try { await Organisation.findOrCreate( { where: {organisationId: 2, organisationName: "Marketing-Lehrstuhl" } }); } catch (error) { console.log(error); }
             try { await Organisation.findOrCreate( { where: {organisationId: 3, organisationName: "Informatik-Lehrstuhl" } }); } catch (error) { console.log(error); }
 
-            try { await Abteilung.findOrCreate( { where: { abteilungId: 1, abteilungName: "Verkauf", organisationId: 1 }}); } catch (error) { console.log(error); }
-            try { await Abteilung.findOrCreate( { where: { abteilungId: 2, abteilungName: "Lager", organisationId: 1 }}); } catch (error) { console.log(error); }
-            try { await Abteilung.findOrCreate( { where: { abteilungId: 3, abteilungName: "Management", organisationId: 1 }}); } catch (error) { console.log(error); }
+            // try { await Abteilung.findOrCreate( { where: { abteilungId: 1, abteilungName: "Verkauf", organisationId: 1 }}); } catch (error) { console.log(error); }
+            // try { await Abteilung.findOrCreate( { where: { abteilungId: 2, abteilungName: "Lager", organisationId: 1 }}); } catch (error) { console.log(error); }
+            // try { await Abteilung.findOrCreate( { where: { abteilungId: 3, abteilungName: "Management", organisationId: 1 }}); } catch (error) { console.log(error); }
 
-            console.log('listening to PORT localhost:' + PORT)
+            console.log('Listening on port localhost:' + PORT+ ". Apache redirects to this from /api/");
         })
-    })
-
-
-
+    });

@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 const client = axios.create({
-    baseURL: 'http://141.89.39.93/api/',
+    baseURL: 'http://bolarus.wi.uni-potsdam.de/api/',
     json: true
 });
 
@@ -73,6 +73,18 @@ export default {
     },
     async deleteProjekt(projektId) {
         let response = await this.execute('delete', `/projekt/${projektId}`);
+        return response.data;
+    },
+    async verifyLogin(data) {
+        let response = await this.execute('post', '/verifyLogin', data);
+        return response.data;
+    },
+    async createAbteilung(data) {
+        let response = await this.execute('post', '/abteilung/', data);
+        return response.data;
+    },
+    async deleteAbteilung(abteilungId) {
+        let response = await this.execute('delete', `/abteilung/${abteilungId}`);
         return response.data;
     }
 }
