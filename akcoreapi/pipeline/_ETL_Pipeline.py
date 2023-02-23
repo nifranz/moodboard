@@ -125,7 +125,7 @@ class _ETL_Pipeline(object):
         api = LimeSurvey(url=URL, username=usern)
         api.open(password=passw)
 
-        ### Antworten exportieren
+        # ### Antworten exportieren
         responses_short = api.survey.export_responses(self.Parameter['surveyData']['surveyId'], "short")
         responses_short_decoded = base64.b64decode(responses_short).decode()
 
@@ -135,7 +135,7 @@ class _ETL_Pipeline(object):
         ### Session schließen
         api.close()
 
-        # Cast into Pandas Dataframe
+        # # Cast into Pandas Dataframe
         self.df_import_short = pd.read_csv(StringIO(responses_short_decoded), sep=";",quotechar='"') 
         #self.df_import_short = self.df_import_short.replace(np.nan, None)
         #print(df_import_short)
@@ -212,7 +212,7 @@ class _ETL_Pipeline(object):
                     returnDF = pd.concat([df.loc[df.token == teil].loc[df.Complete == "yes"],returnDF], ignore_index=True) 
                 else:
                     newLine = df.loc[df.token == teil].tail(1)
-                    print(newLine["Department"].isnull())
+                    # print(newLine["Department"].isnull())
                     if pd.isnull(newLine["Department"].values):
                         newLine["Department"] = teilnehmerData[teil]['abteilung']
                     if pd.isnull(newLine["Role"].values):

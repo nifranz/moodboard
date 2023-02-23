@@ -2,4 +2,5 @@ connection.js
 node_modules/
 .DS_Store
 *.log
+error.log
 __pycache__/

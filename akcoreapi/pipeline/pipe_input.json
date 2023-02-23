@@ -1,0 +1,100 @@
+{
+    "projektId": 8,
+    "surveyData": {
+        "surveyId": "736294",
+        "surveyStartDate": "2023-02-22",
+        "surveyEndDate": "2023-02-23"
+    },
+    "teilnehmerData": {
+        "ALuqil6xqIOAFtH": {
+            "participantID": 3,
+            "rolle": "Change-Manager",
+            "abteilung": "Kundenservice"
+        },
+        "dwDqXmhXG1LnuhK": {
+            "participantID": 4,
+            "rolle": "Change-Manager",
+            "abteilung": "IT"
+        },
+        "Mbq16iZKl82DaAO": {
+            "participantID": 7,
+            "rolle": "User",
+            "abteilung": "Zentrallogistik"
+        },
+        "ywBFroTskLAeT8u": {
+            "participantID": 9,
+            "rolle": "User",
+            "abteilung": "Filiale"
+        },
+        "Zs6SVC2wXcaqzir": {
+            "participantID": 11,
+            "rolle": "User",
+            "abteilung": "Kundenservice"
+        },
+        "jYp69M7r9tx7v6R": {
+            "participantID": 12,
+            "rolle": "User",
+            "abteilung": "Zentrallogistik"
+        },
+        "4iWgzVk0aBSTXsG": {
+            "participantID": 14,
+            "rolle": "User",
+            "abteilung": "Zentrallogistik"
+        },
+        "p2QGhZUPsv6tYAM": {
+            "participantID": 16,
+            "rolle": "User",
+            "abteilung": "Filiale"
+        },
+        "TsMNCz9KidQHeaj": {
+            "participantID": 17,
+            "rolle": "User",
+            "abteilung": "IT"
+        },
+        "c8rKxWTzwaXgGTz": {
+            "participantID": 20,
+            "rolle": "User",
+            "abteilung": "Einkauf"
+        },
+        "Y25eEqz285BJDy4": {
+            "participantID": 22,
+            "rolle": "User",
+            "abteilung": "Einkauf"
+        },
+        "aLmnbjHfJ5FtnFu": {
+            "participantID": 25,
+            "rolle": "User",
+            "abteilung": "Kundenservice"
+        },
+        "vBjzZBhaCR1PRjZ": {
+            "participantID": 28,
+            "rolle": "User",
+            "abteilung": "Filiale"
+        },
+        "IlHmep6i8wiraVN": {
+            "participantID": 29,
+            "rolle": "Key-User",
+            "abteilung": "Projektteam"
+        },
+        "Ar0vNMZpUsILqmB": {
+            "participantID": 30,
+            "rolle": "Key-User",
+            "abteilung": "Projektteam"
+        },
+        "zYXP5sErJY20Qm5": {
+            "participantID": 31,
+            "rolle": "Key-User",
+            "abteilung": "Projektteam"
+        },
+        "noDDIhOtTmu2H8M": {
+            "participantID": 32,
+            "rolle": "Key-User",
+            "abteilung": "Projektteam"
+        },
+        "ZphBQQcMsWVyATU": {
+            "participantID": 33,
+            "rolle": "Key-User",
+            "abteilung": "Projektteam"
+        }
+    }
+}
