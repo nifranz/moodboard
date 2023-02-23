@@ -99,8 +99,8 @@ class _ETL_Pipeline(object):
             #'AvgAll_Symbol',
         ]
         self.Count_colNames = [
-            'Survey_Name',
             'SurveyID',
+            'Survey_Name',
             'Department',
             'Role',
             'Category',
@@ -109,8 +109,8 @@ class _ETL_Pipeline(object):
             'CountA3',
         ]
         self.Pie_colNames = [
-            'Survey_Name',
             'SurveyID',
+            'Survey_Name',
             'ParticipantID',
             'Department',
             'Role',
