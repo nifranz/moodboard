@@ -1,8 +1,8 @@
 <template>
-  <h2>Organisation</h2>
+  <h2 class="mt-3">Nutzer</h2>
   <LoadingComponent v-if="loading" loading=loading />
   <div  v-if="!loading" class="mt-4 mb-4">
-    <p>Hier können sie ihre Organisation auswählen:</p>
+    <!-- <p>Hier können sie ihre Organisation auswählen:</p>
     <form>
       <div class="card p-3 w-50">
         <div class="input-group mb-3">
@@ -13,8 +13,8 @@
         </div>
         <button class="btn btn-outline-primary" @click.prevent="setOrg(selectedOrg)" type="submit">Bestätigen</button>
       </div>
-    </form>
-    <h2 class="mt-3">Nutzer</h2>
+    </form> -->
+    <iframe src="http://141.89.39.93/kibana/app/dashboards?auth_provider_hint=anonymous.anonymous1#/view/a2d37af0-a22d-11ed-8960-8511422d30b9?embed=true&_g=(refreshInterval%3A(pause%3A!t%2Cvalue%3A0)%2Ctime%3A(from%3Anow-15m%2Cto%3Anow))" height="600" width="800"></iframe>
   </div>
 </template>
 
