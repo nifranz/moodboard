@@ -12,6 +12,8 @@ from elasticsearch import helpers
 from datetime import datetime
 from datetime import timedelta
 
+import warnings as w
+w.filterwarnings('ignore')
 
 class _ETL_Pipeline(object):
 
@@ -204,7 +206,7 @@ class _ETL_Pipeline(object):
                 #print(newLine)
                 #newLine['Department'] = teilnehmerData[teil]['abteilung']
                 #newLine['Role'] = teilnehmerData[teil]['rolle']
-                returnDF = pd.concat([df.loc[df.token == teil],returnDF], ignore_index=True)    
+                returnDF = pd.concat([df.loc[df.token == teil],returnDF], ignore_index=True)
             elif len(df.loc[df.token == teil]) > 1:
                 if True in list(df.Complete.loc[df.token == teil]):
                     df.loc[df.token == teil].loc[df.Complete == "yes" ,"Department"] = teilnehmerData[teil]['abteilung']
@@ -223,6 +225,7 @@ class _ETL_Pipeline(object):
             #ghostLine = pd.Series(ghostLine)
             for nt in nichtTeilgenommen:
                 ghostLine[list(df.columns).index("SurveyID")]= surveyData['surveyId']
+                ghostLine[list(df.columns).index("Survey_Name")] = df.Survey_Name.loc[0]
                 ghostLine[list(df.columns).index("token")]= nt
                 ghostLine[list(df.columns).index("ParticipantID")] = teilnehmerData[nt]['participantID']
                 ghostLine[list(df.columns).index("Department")]=  teilnehmerData[nt]['abteilung']
@@ -280,6 +283,7 @@ class _ETL_Pipeline(object):
         ###Datenzuweisung
         self.df_Responses['Duration'] =Duration
         self.df_Responses['Complete'] =Complete
+        self.df_Responses['PartParticipant'] = "yes" if Complete else "no"
         self.df_Responses['Survey_Name'] = SID
         self.df_Responses['SurveyID'] = SID_LS
         self.df_Responses['token'] = token
@@ -374,6 +378,10 @@ class _ETL_Pipeline(object):
                 i +=1
     
     def printJSON(self):
+        self.df_Responses = self.df_Responses.replace(np.nan,'')
+        self.df_Count = self.df_Count.replace(np.nan,'')
+        self.df_pie = self.df_pie.replace(np.nan,'')
+
         JSON_Gesamt={"projektId" : self.Parameter['projektId']}
         JSON_Responses = {}
         JSON_Count = {}
@@ -390,7 +398,7 @@ class _ETL_Pipeline(object):
             docID = str(self.df_pie.SurveyID.loc[line]) + "_" + str(self.df_pie.ParticipantID.loc[line]) + "_R" + str(self.df_pie.Rx.loc[line])
             lineJSON = {docID : self.df_pie.loc[line].to_dict()}
             JSON_Pie.update(lineJSON)
-        JSON_Gesamt.update({'Responses' : JSON_Responses})
+        JSON_Gesamt.update({'responses' : JSON_Responses})
         JSON_Gesamt.update({'pie' : JSON_Pie})
         JSON_Gesamt.update({'count' : JSON_Count})
         return(JSON_Gesamt)

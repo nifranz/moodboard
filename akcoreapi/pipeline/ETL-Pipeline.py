@@ -9,6 +9,7 @@ import numpy as np
 import json
 from _ETL_Pipeline import _ETL_Pipeline
 from elasticsearch import Elasticsearch
+import uuid
 
 url = "http://141.89.39.93/index.php/admin/remotecontrol"
 username = "lukas"
@@ -63,9 +64,14 @@ ETL_Pipe.createCount()
 ETL_Pipe.createPie()
 results = ETL_Pipe.printJSON()
 # print(results)
+filePath = "/home/nifranz/dev/git/akcore_stable/akcoreapi/pipeline/temp.pipe-results_" + str(uuid.uuid4()) + ".json"
+print(filePath+"§")
+
 with open("/home/nifranz/dev/git/akcore_stable/akcoreapi/pipeline/pipe_input.json", "w") as outfile:
     outfile.write(json.dumps(params, indent = 4))
 with open("/home/nifranz/dev/git/akcore_stable/akcoreapi/pipeline/pipe_results.json", "w") as outfile:
+    outfile.write(json.dumps(results, indent = 4))
+with open(filePath, "w") as outfile:
     outfile.write(json.dumps(results, indent = 4))
 
 """

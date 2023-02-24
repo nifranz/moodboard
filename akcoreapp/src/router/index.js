@@ -55,7 +55,7 @@ const routes = [
   },
   {
     path: '/projekt/:projektId/dashboard',
-    name: 'EditProjektView',
+    name: 'ProjektDashboardView',
     component: ProjektDashboardView,
     props: true
   },

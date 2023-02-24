@@ -11,7 +11,6 @@ const uuid = require('uuid')
 const connection = require('./connection')
 const replace = require('replace-in-file')
 const { Client } = require('@elastic/elasticsearch')
-const { exit } = require('process')
     /* required ./connection.js' structure:
         const db_name = 'akcoredb';
         const db_username = '*****';
@@ -44,6 +43,7 @@ function initLogs() {
     
     fs.writeFile(ERROR_LOG_PATH, timeString + "Server has been started", function(){})
 }
+
 
 class SurveyFile {
     constructor(umfrageStartDate, umfrageEndDate, adminName, adminEmail, umfrageTitel, umfrageBeschreibung) {
@@ -225,6 +225,121 @@ class ESAPI {
     //       })
     // }
 
+    async createProjektResIndex(projektId) {
+        await this.#client.indices.create({        
+            "index": "akcore_"+projektId+"_responses",
+            "mappings": {
+                "_meta": {
+                    "created_by": "file-data-visualizer"
+                },
+                "properties": {
+                    "AvgA1": {
+                        "type": "double"
+                    },
+                    "AvgA3": {
+                        "type": "double"
+                    },
+                    "AvgAll": {
+                        "type": "double"
+                    },
+                    "Complete": {
+                        "type": "keyword"
+                    },
+                    "DateSent": {
+                        "type": "date",
+                        "format": "iso8601"
+                    },
+                    "Department": {
+                        "type": "keyword"
+                    },
+                    "Duration": {
+                        "type": "long"
+                    },
+                    "M1": {
+                        "type": "keyword"
+                    },
+                    "MO1": {
+                        "type": "keyword"
+                    },
+                    "MQ1": {
+                        "type": "long"
+                    },
+                    "O1": {
+                        "type": "keyword"
+                    },
+                    "O2": {
+                        "type": "keyword"
+                    },
+                    "O3": {
+                        "type": "keyword"
+                    },
+                    "O4": {
+                        "type": "keyword"
+                    },
+                    "PartParticipant": {
+                        "type": "keyword"
+                    },
+                    "ParticipantID": {
+                        "type": "long"
+                    },
+                    "Q1": {
+                        "type": "long"
+                    },
+                    "Q10": {
+                        "type": "long"
+                    },
+                    "Q2": {
+                        "type": "long"
+                    },
+                    "Q3": {
+                        "type": "long"
+                    },
+                    "Q4": {
+                        "type": "long"
+                    },
+                    "Q5": {
+                        "type": "long"
+                    },
+                    "Q6": {
+                        "type": "long"
+                    },
+                    "Q7": {
+                        "type": "long"
+                    },
+                    "Q8": {
+                        "type": "long"
+                    },
+                    "Q9": {
+                        "type": "long"
+                    },
+                    "R1": {
+                        "type": "long"
+                    },
+                    "R2": {
+                        "type": "long"
+                    },
+                    "R3": {
+                        "type": "long"
+                    },
+                    "Role": {
+                        "type": "keyword"
+                    },
+                    "SurveyID": {
+                        "type": "long"
+                    },
+                    "column1": {
+                        "type": "long"
+                    }
+                }
+            }
+        }).then(function(resp) {
+            console.log(`Successfully created index akcore_${projektId}_responses!`);
+            console.log(JSON.stringify(resp, null, 4));
+        }, function(err) {
+            console.trace(err.message);
+        });
+    }
+
     //create responses index
     async createProjektIndices(projektId) {
         // create response index
@@ -232,106 +347,106 @@ class ESAPI {
             "index": "akcore_"+projektId+"_responses",
             "mappings": {
                 "_meta": {
-                "created_by": "file-data-visualizer"
+                    "created_by": "file-data-visualizer"
                 },
                 "properties": {
-                "AvgA1": {
-                    "type": "double"
-                },
-                "AvgA3": {
-                    "type": "double"
-                },
-                "AvgAll": {
-                    "type": "double"
-                },
-                "Complete": {
-                    "type": "keyword"
-                },
-                "DateSent": {
-                    "type": "date",
-                    "format": "iso8601"
-                },
-                "Department": {
-                    "type": "keyword"
-                },
-                "Duration": {
-                    "type": "long"
-                },
-                "M1": {
-                    "type": "keyword"
-                },
-                "MO1": {
-                    "type": "keyword"
-                },
-                "MQ1": {
-                    "type": "long"
-                },
-                "O1": {
-                    "type": "keyword"
-                },
-                "O2": {
-                    "type": "keyword"
-                },
-                "O3": {
-                    "type": "keyword"
-                },
-                "O4": {
-                    "type": "keyword"
-                },
-                "PartParticipant": {
-                    "type": "keyword"
-                },
-                "ParticipantID": {
-                    "type": "long"
-                },
-                "Q1": {
-                    "type": "long"
-                },
-                "Q10": {
-                    "type": "long"
-                },
-                "Q2": {
-                    "type": "long"
-                },
-                "Q3": {
-                    "type": "long"
-                },
-                "Q4": {
-                    "type": "long"
-                },
-                "Q5": {
-                    "type": "long"
-                },
-                "Q6": {
-                    "type": "long"
-                },
-                "Q7": {
-                    "type": "long"
-                },
-                "Q8": {
-                    "type": "long"
-                },
-                "Q9": {
-                    "type": "long"
-                },
-                "R1": {
-                    "type": "long"
-                },
-                "R2": {
-                    "type": "long"
-                },
-                "R3": {
-                    "type": "long"
-                },
-                "Role": {
-                    "type": "keyword"
-                },
-                "SurveyID": {
-                    "type": "long"
-                },
-                "column1": {
-                    "type": "long"
-                }
+                    "AvgA1": {
+                        "type": "double"
+                    },
+                    "AvgA3": {
+                        "type": "double"
+                    },
+                    "AvgAll": {
+                        "type": "double"
+                    },
+                    "Complete": {
+                        "type": "keyword"
+                    },
+                    "DateSent": {
+                        "type": "date",
+                        "format": "iso8601"
+                    },
+                    "Department": {
+                        "type": "keyword"
+                    },
+                    "Duration": {
+                        "type": "long"
+                    },
+                    "M1": {
+                        "type": "keyword"
+                    },
+                    "MO1": {
+                        "type": "keyword"
+                    },
+                    "MQ1": {
+                        "type": "long"
+                    },
+                    "O1": {
+                        "type": "keyword"
+                    },
+                    "O2": {
+                        "type": "keyword"
+                    },
+                    "O3": {
+                        "type": "keyword"
+                    },
+                    "O4": {
+                        "type": "keyword"
+                    },
+                    "PartParticipant": {
+                        "type": "keyword"
+                    },
+                    "ParticipantID": {
+                        "type": "long"
+                    },
+                    "Q1": {
+                        "type": "long"
+                    },
+                    "Q10": {
+                        "type": "long"
+                    },
+                    "Q2": {
+                        "type": "long"
+                    },
+                    "Q3": {
+                        "type": "long"
+                    },
+                    "Q4": {
+                        "type": "long"
+                    },
+                    "Q5": {
+                        "type": "long"
+                    },
+                    "Q6": {
+                        "type": "long"
+                    },
+                    "Q7": {
+                        "type": "long"
+                    },
+                    "Q8": {
+                        "type": "long"
+                    },
+                    "Q9": {
+                        "type": "long"
+                    },
+                    "R1": {
+                        "type": "long"
+                    },
+                    "R2": {
+                        "type": "long"
+                    },
+                    "R3": {
+                        "type": "long"
+                    },
+                    "Role": {
+                        "type": "keyword"
+                    },
+                    "SurveyID": {
+                        "type": "long"
+                    },
+                    "column1": {
+                        "type": "long"
+                    }
                 }
             }
         }).then(function(resp) {
@@ -448,6 +563,8 @@ class ESAPI {
     }
 
     async writeDataToDocument(indexId, documentId, data, refresh) {
+        if (data.DateSent === '') delete data.DateSent;
+        if (data.DateSent) data.DateSent = (data.DateSent).replace(" ", "T");
         await this.#client.index({
             index: indexId,
             id: documentId,
@@ -1661,7 +1778,7 @@ app.get("/triggerPipe/:surveyId/:tokenId/:answerId", async(req, res) => {
     for (let ma of projektMitarbeiter) {
         mitarbeiterData[ma.umfrages[0].fuelltAus.mitarbeiterLimesurveyTokenId] = { "participantId": ma.mitarbeiterId, "rolle": ma.projektTeilnahme.mitarbeiterRolle, "abteilung": ma.abteilung.abteilungName };
     }
-    let surveyData = {"surveyId": surveyId, "surveyStartDate": umfrage.umfrageStartDate, "surveyEndDate": umfrage.umfrageEndDate}
+    let surveyData = { "surveyId": surveyId, "surveyStartDate": umfrage.umfrageStartDate, "surveyEndDate": umfrage.umfrageEndDate }
     let json = { "surveyData": surveyData, "teilnehmerData": mitarbeiterData };
 
     // create a jsonfile to read from python script with "json" variable as file content
@@ -1777,35 +1894,49 @@ app.get("/triggerPipe2/:surveyId/:tokenId/:answerId", async(req, res) => {
     let json = { "projektId": projekt.projektId, "surveyData": surveyData, "teilnehmerData": mitarbeiterData };
 
     // create a jsonfile to read from python script with "json" variable as file content
-    var filePath = __dirname + "/../pipeline/tmp." + uuid.v4() + "_survey_" + surveyId + "_mitarbeiter-data.json"
+    var filePath = __dirname + "/../pipeline/tmp.survey_" + surveyId + "_mitarbeiter-data_" + uuid.v4() + ".json"
     await fs.writeFile(filePath, JSON.stringify(json), function(){});
     
     let data = await new Promise(async (resolve, reject) => {
         exec(`python3 ${__dirname}/../pipeline/ETL-Pipeline.py ${filePath} `, async (error, stdout, stderr) => {
             if (error) {
+                console.log("Error while invoking python script!");
                 console.log('error:', error.message);
                 reject();
             }
             if (stderr) {            
+                console.log("Error while executing python script!");
                 console.log('stderr:', stderr);
-                console.log("Error!\n###########################")
                 reject();
             }
             console.log("stdout:", stdout);
+            let pipeResultsFilePath = stdout.split('§')[0];
+            let returnData = "";
+            console.log("'"+pipeResultsFilePath+"'")
+            let data = await fs.readFile(pipeResultsFilePath, encoding = 'utf-8');
+            await fs.unlink(pipeResultsFilePath); // delete the file created by python
+            console.log(typeof(data))
+            // console.log(data)
 
-            let returnData = { // emulates the data returned by python script
-                "projektId": projekt.projektId,
-                "responsesTable": {
-                    "surveyId01_participantId01": {
-                        "spalte1": "value1",
-                        "spalte2": "value2"
-                    }
-                },
-                "pieTable": {
-                },
-                "countTable": {
-                }
-            }
+           // console.log(json)
+            returnData = JSON.parse(data);
+
+            
+            
+            // returnData= { 
+            //     "projektId": projekt.projektId,
+            //     "responsesTable": {
+            //         "surveyId01_participantId01": {
+            //             "spalte1": "value1",
+            //             "spalte2": "value2"
+            //         }
+            //     },
+            //     "pieTable": {
+            //     },
+            //     "countTable": {
+            //     }
+            // }
+            console.log(returnData);
             resolve(returnData);
         });
     }).catch(() => {
@@ -1813,7 +1944,7 @@ app.get("/triggerPipe2/:surveyId/:tokenId/:answerId", async(req, res) => {
     }).then(async (data) => {
         return data;
     }).finally(async () => {
-         // deleting the file after use
+         // deleting the file after data was imported
          await fs.unlink(filePath);
     });
     
@@ -1821,9 +1952,9 @@ app.get("/triggerPipe2/:surveyId/:tokenId/:answerId", async(req, res) => {
     if (data === null) return res.sendStatus(HTTP.INTERNAL_ERROR);
 
     let projektId = data.projektId;
-    let pie = data.pieTable;
-    let count = data.countTable;
-    let responses = data.responsesTable;
+    let pie = data.pie;
+    let count = data.count;
+    let responses = data.responses;
 
     let esClient = new ESAPI();
 
@@ -1831,21 +1962,22 @@ app.get("/triggerPipe2/:surveyId/:tokenId/:answerId", async(req, res) => {
     for (let documentId of Object.keys(responses)) {
         // the documentId is the desired id of an elasticsearch document: one entry of an index In a tabular metaphor, the index is a table, the document is one row in that table. the documentId is used to adress a specific row.
         let indexId = `akcore_${projektId}_responses`
-        // await esClient.writeDataToDocument(indexId, documentId, responses[documentId]);
+        await esClient.writeDataToDocument(indexId, documentId, responses[documentId], refresh = true);
     };
 
     // writing all pie documents
     for (let documentId of Object.keys(pie)) {
         // the documentId is the desired id of an elasticsearch document: one entry of an index. In a tabular metaphor, the index is a table, the document is one row in that table. the documentId is used to adress a specific row.
         let indexId = `akcore_${projektId}_pie`
-        // await esClient.writeDataToDocument(indexId, documentId, pie[documentId]);
+        console.log("indexing pie");
+        await esClient.writeDataToDocument(indexId, documentId, pie[documentId], refresh = true);
     };
 
     // writing all count documents
     for (let documentId of Object.keys(count)) {
         // the documentId is the desired id of an elasticsearch document: one entry of an index In a tabular metaphor, the index is a table, the document is one row in that table. the documentId is used to adress a specific row.
-        let indexId = `akcore_${projektId}count`
-        // await esClient.writeDataToDocument(indexId, documentId, count[documentId]);
+        let indexId = `akcore_${projektId}_count`
+        await esClient.writeDataToDocument(indexId, documentId, count[documentId]);
     };
 
     return res.sendStatus(HTTP.OK);    
@@ -2031,6 +2163,12 @@ async function createKibanaSpace(projektId, projektName) {
 
     return projektId;
 }
+
+app.get("/res2", async (req, res) => {
+    let esClient = new ESAPI();
+    await esClient.createProjektResIndex(7);
+    return res.sendStatus(HTTP.OK);
+})
 
 // app.get("/testUpdateIndices", async (req, res) => {
 //     let data = {
