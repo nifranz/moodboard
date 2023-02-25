@@ -4,7 +4,7 @@
       <router-link :to="`/projekt/${projekt.projektId}` " class="btn btn-outline-secondary mb-3">zur Projektübersicht</router-link>
       <LoadingComponent />
       <div class ="d-flex justify-content-center align-items-center">
-        <iframe v-if="projekt.projektKibanaDashboardId" :src="this.kibanaLink" height="2000" width="1500" nonce="rAnd0m"></iframe>
+        <iframe v-if="projekt.projektKibanaDashboardId" :src="this.kibanaLink" height="1800" width="1500" nonce="rAnd0m"></iframe>
       </div>
 </template>
 
@@ -34,7 +34,8 @@
                 this.loading = true;
                 this.projekt = await api.getProjekt(this.projektId);
                 console.log(this.projekt);
-                this.kibanaLink = `http://bolarus.wi.uni-potsdam.de/kibana/s/${this.projektId}/app/dashboards?auth_provider_hint=anonymous1#/view/${this.projekt.projektKibanaDashboardId}?embed=true&_g=(refreshInterval%3A(pause%3A!t%2Cvalue%3A0)%2Ctime%3A(from%3Anow-15m%2Cto%3Anow))&hide-filter-bar=true`
+                this.kibanaLinkOld = "http://bolarus.wi.uni-potsdam.de/kibana/app/dashboards?auth_provider_hint=anonymous1#/view/a2d37af0-a22d-11ed-8960-8511422d30b9?embed=true&_g=(refreshInterval%3A(pause%3A!t%2Cvalue%3A0)%2Ctime%3A(from%3Anow-15y%2Cto%3Anow))",
+                this.kibanaLink = `http://bolarus.wi.uni-potsdam.de/kibana/s/${this.projektId}/app/dashboards?auth_provider_hint=anonymous1#/view/${this.projekt.projektKibanaDashboardId}?embed=true&_g=(refreshInterval%3A(pause%3A!t%2Cvalue%3A0)%2Ctime%3A(from%3Anow-15y%2Cto%3Anow))`
                 this.loading = false;        
             },
         }

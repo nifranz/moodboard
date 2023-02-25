@@ -208,7 +208,7 @@ class _ETL_Pipeline(object):
                 #newLine['Role'] = teilnehmerData[teil]['rolle']
                 returnDF = pd.concat([df.loc[df.token == teil],returnDF], ignore_index=True)
             elif len(df.loc[df.token == teil]) > 1:
-                if True in list(df.Complete.loc[df.token == teil]):
+                if "Y" in list(df.Complete.loc[df.token == teil]):
                     df.loc[df.token == teil].loc[df.Complete == "yes" ,"Department"] = teilnehmerData[teil]['abteilung']
                     df.loc[df.token == teil].loc[df.Complete == "yes",'Role'] = teilnehmerData[teil]['rolle']
                     returnDF = pd.concat([df.loc[df.token == teil].loc[df.Complete == "yes"],returnDF], ignore_index=True) 
@@ -242,7 +242,7 @@ class _ETL_Pipeline(object):
         SID_LS = [self.Parameter['surveyData']['surveyId']] * self.df_import_short.shape[0]
         ###SurveyID schön
         startDate_DateObj = datetime.strptime(self.Parameter['surveyData']['surveyStartDate'], '%Y-%m-%d').date()
-        SurveyID = self.dictMonth[startDate_DateObj.month] + " " + str(startDate_DateObj.year)
+        SurveyID = "Survey " + str(self.Parameter['surveyData']['surveyIndex']) + " (" + self.dictMonth[startDate_DateObj.month] + " " + str(startDate_DateObj.year) + ")"
         SID= [SurveyID] * self.df_import_short.shape[0]
         SID_LS = [self.Parameter['surveyData']['surveyId']] * self.df_import_short.shape[0]
         ###ParticipantID & Token

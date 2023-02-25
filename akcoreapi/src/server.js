@@ -1,952 +1,26 @@
-const fs = require('fs/promises')
-const fssync = require('fs')
-const express = require('express')
-const cors = require('cors')
-const bodyParser = require('body-parser')
-const { Sequelize, DataTypes } = require('sequelize')
-const axios = require('axios')
-const {exec, spawn} = require('child_process')
-const uuid = require('uuid')
-// const morgan = require('morgan')
 const connection = require('./connection')
 const replace = require('replace-in-file')
 const { Client } = require('@elastic/elasticsearch')
-    /* required ./connection.js' structure:
-        const db_name = 'akcoredb';
-        const db_username = '*****';
-        const db_password = '*****';
-        const db_host = 'localhost'
-        
-        const ls_username = '*****';
-        const ls_password = '*****';
-        
-        module.exports = {
-            db_name,
-            db_username,
-            db_password,
-            db_host,
-            ls_username,
-            ls_password
-        }
-    */
+const { Console } = require('console')
+const { Sequelize, DataTypes } = require('sequelize')
+const fssync = require('fs')
+const axios = require('axios')
 
+const express = require('express')
+const fs = require('fs/promises')
+const cors = require('cors')
+const bodyParser = require('body-parser')
+const { exec } = require('child_process')
+const uuid = require('uuid')
 
-const LIME_RPC_URL = 'http://bolarus.wi.uni-potsdam.de/index.php/admin/remotecontrol/';
-const LRPC_LOGGING = true;
-const ERROR_LOG_PATH = __dirname + "/../logs/error.log"
-const LRPC_LOG_PATH = __dirname + "/../logs/lrpc.log"
+const { ESAPI } = require(__dirname+'/apis/esapi.js')
+const { LRPC } = require(__dirname+'/apis/lrpc.js')
+const { KIBAPI } = require(__dirname+"/apis/kibapi.js")
+const { akcoredb, Organisation, Projekt, Umfrage, Mitarbeiter, Abteilung } = require('./datamodels')
+const { getToday, getYesterday, SurveyFile, handleError } = require('./helper')
 
-function initLogs() {
-    return;
-    let dateString = (new Date(Date.now()).toString()).split(" ");
-    let timeString = dateString[1] + " " + dateString[2] + " " + dateString[3] + " " + dateString[4] + " => "
-    
-    fs.writeFile(ERROR_LOG_PATH, timeString + "Server has been started", function(){})
-}
-
-
-class SurveyFile {
-    constructor(umfrageStartDate, umfrageEndDate, adminName, adminEmail, umfrageTitel, umfrageBeschreibung) {
-        this.umfrageStartDate = umfrageStartDate;
-        this.umfrageEndDate = umfrageEndDate;
-        this.adminName = adminName;
-        this.adminEmail = adminEmail;
-        this.umfrageTitel = umfrageTitel;
-        this.umfrageBeschreibung = umfrageBeschreibung;
-
-        this.filePath = __dirname + "/../assets/limesurvey/tmp." + uuid.v4() + "_survey-import-file_" + ".lss";
-        this.created = false;
-    }
-
-    async createFile() {
-        if (this.created) throw new Error("File has already been created!");
-        let sourceSurveyFilePath = __dirname + '/../assets/limesurvey/base_survey_2.lss'
-        let sourceSurveyFile = await fs.readFile(sourceSurveyFilePath, { encoding: 'UTF-8' });
-        if(!sourceSurveyFile) throw new Error("Some error reading the file");
-
-        // create new temporary import lss-file
-        
-        await fs.writeFile(this.filePath, sourceSurveyFile, function(){}) 
-
-        // replacing survey properties in temporary file
-        let replacements = {
-            "replaceStartDate": {
-                files: this.filePath,
-                from: /<startdate>.*<\/startdate>/,
-                to: "<startdate><![CDATA["+ this.umfrageStartDate + " 00:00:00" +"]]></startdate>",
-            },
-            "replaceEndDate": {
-                files: this.filePath,
-                from: /<expires>.*<\/expires>/,
-                to: "<expires><![CDATA["+ this.umfrageEndDate + " 23:59:59" +"]]></expires>",
-            },
-            "replaceAdminName": {
-                files: this.filePath,
-                from: /<admin>.*<\/admin>/,
-                to: "<admin><![CDATA["+ this.adminName +"]]></admin>",
-            },
-            "replaceAdminEmail": {
-                files: this.filePath,
-                from: /<adminemail>.*<\/adminemail>/,
-                to: "<adminemail><![CDATA["+ this.adminEmail +"]]></adminemail>",
-            },
-            "replaceUmfrageTitel": {
-                files: this.filePath,
-                from: /<surveyls_title>.*<\/surveyls_title>/,
-                to: "<surveyls_title><![CDATA["+ "Stimmungsbarometer für Projekt " + this.umfrageTitel +"]]></surveyls_title>",
-            },
-            "replaceUmfrageBeschreibung": {
-                files: this.filePath,
-                from: /<surveyls_description>.*<\/surveyls_description>/,
-                to: "<surveyls_description><![CDATA["+ this.umfrageBeschreibung +"]]></surveyls_description>",
-            }
-        }
-        for (let replacement of Object.values(replacements)) {
-            console.log(replacement.files);
-            await replace(replacement);
-        }
-
-        this.created = true;
-    }
-
-    getPathToFile() {
-        if (this.destroyed || !this.created) return console.log("No file has been created or it has already been destroyed.");
-        return this.filePath;
-    }
-
-    async destroyFile() {
-        if (!this.created) {
-            throw new Error("No file has been created yet. No file was destroyed.");
-        }
-        if (this.destroyed) {
-            throw new Error("File has already been destroyed");
-        }
-        await fs.unlink(this.filePath);
-        this.destroyed = true;
-    }
-}
-
-
-function getToday() {
-    let d = new Date;
-    let month = d.getMonth() + 1;
-    if (month < 10) {
-        month = "0" + month;
-    } 
-    return '' + `${d.getFullYear()}-${month}-${d.getDate()}`
-}
-
-function handleError(error) {
-    console.log(error);
-    let dateString = (new Date(Date.now()).toString()).split(" ");
-    let timeString = dateString[1] + " " + dateString[2] + " " + dateString[3] + " " + dateString[4] + " => "
-    fs.appendFile(ERROR_LOG_PATH, timeString + error + "\r\n", (error) => {});
-}
-
-function logLRPC(id, response) {
-    if (!LRPC_LOGGING) return;
-    let dateString = (new Date(Date.now()).toString()).split(" ");
-    let timeString = dateString[1] + " " + dateString[2] + " " + dateString[3] + " " + dateString[4] + " => "
-    message = "LRPC-Response for '" + id + "' :: result: " + JSON.stringify(response.result) + " :: error " + JSON.stringify(response.error)
-    console.log(message)
-    fs.appendFile(LRPC_LOG_PATH, timeString + message + "\r\n", (error) => {});
-}
-
-/**
- * Make a HTTP-POST request to the limesurvey rpc using axios HTTP library
- * @param id: rpc id
- * @param method: the rpc method to be used
- * @param params: the rpc params to send to the server 
- */
-async function lrpc_req(id, method, params) {
-    const response = await axios.post(LIME_RPC_URL, {
-        id: id,
-        method: method,
-        params: params,
-    }, {
-        headers: {
-        'Content-Type': 'application/json',
-        },
-    });
-    logLRPC(id, response.data)
-    return response.data;
-}
-
-class ESAPI {
-    #apiKey = 'eDdSV1o0WUJXUzk3dlFqZi1HY2U6M1R4ZHJEcjFTT3lfTV8teU1LSGM1UQ==';
-    #esNode = 'https://localhost:9200';
-    #client;
-
-    constructor() {
-        this.#client = new Client({
-            node: this.#esNode,
-            auth: {
-              apiKey: this.#apiKey
-            },
-            tls: {
-                ca: fssync.readFileSync(__dirname+'/../pipeline/http_ca.crt'),
-                rejectUnauthorized: false
-              }
-        });
-    }
-    // async #apiHTTPRequest(method, route, data) {
-    //     let retdata;
-    //     await axios.request({
-    //         method: method,
-    //         url: 'http://localhost:5601/kibana/' + route,
-    //         headers: {
-    //             'Content-Type': 'application/json',
-    //             'kbn-xsrf': 'true',
-    //             'Authorization': 'ApiKey eDdSV1o0WUJXUzk3dlFqZi1HY2U6M1R4ZHJEcjFTT3lfTV8teU1LSGM1UQ=='
-    //         },
-    //         data: data,
-    //     }).then(function (response) {
-    //         console.log(response.data);
-    //         retdata = response.data;
-    //     })
-    //     .catch(function (error) {
-    //         console.error(error);
-    //     });
-    //     return retdata;
-    // }   
-
-    // async addParticipantResponse(projektId, participantTokenId, index, document) {
-    //     await this.#client.index({
-    //         index: 'akcore_'+projektId+'_'+index,
-    //         id:participantTokenId,
-    //         refresh: true,
-    //         document: {
-    //             "SuveryID": 99,
-    //             "Department": "Zentrallogistik",
-    //             "ParticipantID": 1,
-    //             "Role": "Key-User",
-    //             "PartParticipant": "yes"
-    //           }
-    //       })
-    // }
-
-    async createProjektResIndex(projektId) {
-        await this.#client.indices.create({        
-            "index": "akcore_"+projektId+"_responses",
-            "mappings": {
-                "_meta": {
-                    "created_by": "file-data-visualizer"
-                },
-                "properties": {
-                    "AvgA1": {
-                        "type": "double"
-                    },
-                    "AvgA3": {
-                        "type": "double"
-                    },
-                    "AvgAll": {
-                        "type": "double"
-                    },
-                    "Complete": {
-                        "type": "keyword"
-                    },
-                    "DateSent": {
-                        "type": "date",
-                        "format": "iso8601"
-                    },
-                    "Department": {
-                        "type": "keyword"
-                    },
-                    "Duration": {
-                        "type": "long"
-                    },
-                    "M1": {
-                        "type": "keyword"
-                    },
-                    "MO1": {
-                        "type": "keyword"
-                    },
-                    "MQ1": {
-                        "type": "long"
-                    },
-                    "O1": {
-                        "type": "keyword"
-                    },
-                    "O2": {
-                        "type": "keyword"
-                    },
-                    "O3": {
-                        "type": "keyword"
-                    },
-                    "O4": {
-                        "type": "keyword"
-                    },
-                    "PartParticipant": {
-                        "type": "keyword"
-                    },
-                    "ParticipantID": {
-                        "type": "long"
-                    },
-                    "Q1": {
-                        "type": "long"
-                    },
-                    "Q10": {
-                        "type": "long"
-                    },
-                    "Q2": {
-                        "type": "long"
-                    },
-                    "Q3": {
-                        "type": "long"
-                    },
-                    "Q4": {
-                        "type": "long"
-                    },
-                    "Q5": {
-                        "type": "long"
-                    },
-                    "Q6": {
-                        "type": "long"
-                    },
-                    "Q7": {
-                        "type": "long"
-                    },
-                    "Q8": {
-                        "type": "long"
-                    },
-                    "Q9": {
-                        "type": "long"
-                    },
-                    "R1": {
-                        "type": "long"
-                    },
-                    "R2": {
-                        "type": "long"
-                    },
-                    "R3": {
-                        "type": "long"
-                    },
-                    "Role": {
-                        "type": "keyword"
-                    },
-                    "SurveyID": {
-                        "type": "long"
-                    },
-                    "column1": {
-                        "type": "long"
-                    }
-                }
-            }
-        }).then(function(resp) {
-            console.log(`Successfully created index akcore_${projektId}_responses!`);
-            console.log(JSON.stringify(resp, null, 4));
-        }, function(err) {
-            console.trace(err.message);
-        });
-    }
-
-    //create responses index
-    async createProjektIndices(projektId) {
-        // create response index
-        await this.#client.indices.create({        
-            "index": "akcore_"+projektId+"_responses",
-            "mappings": {
-                "_meta": {
-                    "created_by": "file-data-visualizer"
-                },
-                "properties": {
-                    "AvgA1": {
-                        "type": "double"
-                    },
-                    "AvgA3": {
-                        "type": "double"
-                    },
-                    "AvgAll": {
-                        "type": "double"
-                    },
-                    "Complete": {
-                        "type": "keyword"
-                    },
-                    "DateSent": {
-                        "type": "date",
-                        "format": "iso8601"
-                    },
-                    "Department": {
-                        "type": "keyword"
-                    },
-                    "Duration": {
-                        "type": "long"
-                    },
-                    "M1": {
-                        "type": "keyword"
-                    },
-                    "MO1": {
-                        "type": "keyword"
-                    },
-                    "MQ1": {
-                        "type": "long"
-                    },
-                    "O1": {
-                        "type": "keyword"
-                    },
-                    "O2": {
-                        "type": "keyword"
-                    },
-                    "O3": {
-                        "type": "keyword"
-                    },
-                    "O4": {
-                        "type": "keyword"
-                    },
-                    "PartParticipant": {
-                        "type": "keyword"
-                    },
-                    "ParticipantID": {
-                        "type": "long"
-                    },
-                    "Q1": {
-                        "type": "long"
-                    },
-                    "Q10": {
-                        "type": "long"
-                    },
-                    "Q2": {
-                        "type": "long"
-                    },
-                    "Q3": {
-                        "type": "long"
-                    },
-                    "Q4": {
-                        "type": "long"
-                    },
-                    "Q5": {
-                        "type": "long"
-                    },
-                    "Q6": {
-                        "type": "long"
-                    },
-                    "Q7": {
-                        "type": "long"
-                    },
-                    "Q8": {
-                        "type": "long"
-                    },
-                    "Q9": {
-                        "type": "long"
-                    },
-                    "R1": {
-                        "type": "long"
-                    },
-                    "R2": {
-                        "type": "long"
-                    },
-                    "R3": {
-                        "type": "long"
-                    },
-                    "Role": {
-                        "type": "keyword"
-                    },
-                    "SurveyID": {
-                        "type": "long"
-                    },
-                    "column1": {
-                        "type": "long"
-                    }
-                }
-            }
-        }).then(function(resp) {
-            console.log(`Successfully created index akcore_${projektId}_responses!`);
-            console.log(JSON.stringify(resp, null, 4));
-        }, function(err) {
-            console.trace(err.message);
-        });
-
-        //create pie index
-        await this.#client.indices.create({
-            "index": "akcore_"+projektId+"_pie",
-            "mappings": {
-            "_meta": {
-                "created_by": "file-data-visualizer"
-            },
-            "properties": {
-                "Department": {
-                "type": "keyword"
-                },
-                "ParticipantID": {
-                "type": "long"
-                },
-                "Percent": {
-                "type": "long"
-                },
-                "Role": {
-                "type": "keyword"
-                },
-                "Rx": {
-                "type": "long"
-                },
-                "SurveyID": {
-                "type": "long"
-                }
-            }
-            }
-        }).then(function(resp) {
-            console.log(`Successfully created index akcore_${projektId}_pie!`);
-            console.log(JSON.stringify(resp, null, 4));
-        }, function(err) {
-            console.trace(err.message);
-        });
-
-        // create count index
-        await this.#client.indices.create({
-            "index": "akcore_"+projektId+"_count",
-            "mappings": {
-            "_meta": {
-                "created_by": "file-data-visualizer"
-            },
-            "properties": {
-                "Category": {
-                "type": "long"
-                },
-                "CountA1": {
-                "type": "long"
-                },
-                "CountA3": {
-                "type": "long"
-                },
-                "CountAll": {
-                "type": "long"
-                },
-                "Department": {
-                "type": "keyword"
-                },
-                "Role": {
-                "type": "keyword"
-                },
-                "SurveyID": {
-                "type": "long"
-                }
-            }
-            }
-        }).then(function(resp) {
-            console.log(`Successfully created index akcore_${projektId}_count!`);
-            console.log(JSON.stringify(resp, null, 4));
-        }, function(err) {
-            console.trace(err.message);
-        });
-    }
-
-    async deleteProjectIndices(projektId) {
-        // create count index
-        await this.#client.indices.delete({
-            index: "akcore_"+projektId+"_count" 
-        }).then(function(resp) {
-            console.log(`Successfully deleted index akcore_${projektId}_count!`);
-            console.log(JSON.stringify(resp, null, 4));
-        }, function(err) {
-            console.trace(err.message);
-        });
-
-        // create pie index
-        await this.#client.indices.delete({
-            index: "akcore_"+projektId+"_pie" 
-        }).then(function(resp) {
-            console.log(`Successfully deleted index akcore_${projektId}_pie!`);
-            console.log(JSON.stringify(resp, null, 4));
-        }, function(err) {
-            console.trace(err.message);
-        });
-
-        // create responses index
-        await this.#client.indices.delete({
-            index: "akcore_"+projektId+"_responses" 
-        }).then(function(resp) {
-            console.log(`Successfully deleted index akcore_${projektId}_responses!`);
-            console.log(JSON.stringify(resp, null, 4));
-        }, function(err) {
-            console.trace(err.message);
-        });
-    }
-
-    async writeDataToDocument(indexId, documentId, data, refresh) {
-        if (data.DateSent === '') delete data.DateSent;
-        if (data.DateSent) data.DateSent = (data.DateSent).replace(" ", "T");
-        await this.#client.index({
-            index: indexId,
-            id: documentId,
-            refresh: refresh,
-            document: data
-        }).then(function(resp) {
-            console.log(`Successfully wrote document (id: "${documentId}") to index "${indexId}"!`);
-            console.log(JSON.stringify(resp, null, 4));
-        }, function(err) {
-            console.trace(err.message);
-        });
-
-        console.log("indexId:",indexId);
-        console.log("documentId:",documentId);
-        console.log("data:",data);
-        return null;
-    }
-    
-    async getIndex() {
-        let result = await this.#client.search({
-            index: 'akcore-projekt_01_umfr_01_responses',
-            query: {
-              match: {
-                SuveryID: 99
-              }
-            }
-          })
-        
-        console.log(result.hits.hits)
-    }
-
-    async setIndexReadOnly(index) {
-        const indexName ="akcore_dev_"+index;
-        const settings = {
-            index: {
-                blocks: {
-                    read_only: false
-                }
-            }
-        };
-        await this.#client.indices.putSettings({ "index": indexName, body: settings });
-    }
-
-    // async copyIndecesToProjektSpace(projektId) {
-    //     await this.#client.indices.clone({
-    //         "index": 'akcore_dev_responses',
-    //         "target": 'akcore_'+projektId+"_responses"
-    //     });
-    //     await this.#client.indices.clone({
-    //         "index": 'akcore_dev_count',
-    //         "target": 'akcore_'+projektId+"_count"
-    //     });
-    //     await this.#client.indices.clone({
-    //         "index": 'akcore_dev_pie',
-    //         "target": 'akcore_'+projektId+"_pie"
-    //     });
-    // }
-}
-
-/**
- * @class Class representing a communication interface to the LimeSurvey RPC API 
- */
-class LRPC {
-    #sessionKey;
-    #activeConnection;
-     /** @constructs */
-    constructor() {
-        this.#sessionKey = "";
-        this.#activeConnection = false;
-    }
-    /** 
-     * Opens a connection to the LRPC, requesting a sessionKey 
-     * */
-    async openConnection() {
-        try {
-            if (this.#activeConnection) {
-                console.error("Connection already active");
-                return
-            }
-            let response = await lrpc_req('open_connection', 'get_session_key', [connection.ls_username, connection.ls_password]);
-            if (response.error) throw new Error(response.error);
-            this.#sessionKey = response.result;
-            this.#activeConnection = true;
-            console.log("Connection to LimeSurvey RPC established!");
-        } catch (error) {
-            console.log(error);
-        }
-    }
-
-    isActive() {
-        console.log(this.#sessionKey);
-        return this.#activeConnection;
-
-    }
-    /** 
-     * Closes the connection to the LRPC 
-     * */
-    async closeConnection() {
-        try {
-            if (!this.#activeConnection) {
-                console.error("No active connection!");
-                return 
-            }
-            let response = await lrpc_req('close_connection','release_session_key', [this.#sessionKey]);
-            if (response.error) throw new Error(response.error);
-            this.#sessionKey = "";
-            this.#activeConnection = false;
-            console.log("Connection to LimeSurvey RPC closed!");
-        } catch (error) {
-            console.log(error);
-        }
-    }
-    /** 
-     * Requests all surveys from the LRPC and prints the response to the console.
-     * */
-    async listSurveys() {
-        try {
-            if (!this.#activeConnection) {
-                throw new Error("No active connection! Establish a connection first by calling openConnection()!");
-            }
-            let data = await lrpc_req('list_surveys', 'list_surveys', [this.#sessionKey]);
-            if (data.error) throw new Error (data.error);
-            console.log(data.result);
-            return (data.result);
-        } catch (error) {
-            throw new Error(error);
-        }        
-    }
-
-    /** 
-     * Requests all users from the LRPC and prints the response to the console.
-     * */
-    async listUsers() {
-        try {
-            if (!this.#activeConnection) {
-                throw new Error("No active connection! Establish a connection first by calling openConnection()!");
-            }
-            let data = await lrpc_req('list_users', 'list_users', [this.#sessionKey]);
-            if (data.error) 
-            console.log(data.result);
-        } catch (error) {
-            console.log(error);
-        }        
-    }
-
-    /** 
-     * Requests all surveys from the LRPC and prints the response to the console.
-     * @param startDate The startDate of the survey
-     * @param stopDate The stopDate of the survey
-     * @returns {Promise} Promise object, represents the surveyId of the created survey
-     * */
-    async createSurvey(surveyFilePath) {
-        return new Promise(async (resolve, reject)  => {
-            try {
-                if (!this.#activeConnection) {
-                    throw new Error("No active connection! Establish a connection first by calling openConnection()!");
-                }    
-
-                var surveyFile = await fs.readFile(surveyFilePath, { encoding: 'base64' });
-                if(!surveyFile) throw new Error("Some error reading the file");
-    
-                let data = await lrpc_req('import_survey', 'import_survey', [this.#sessionKey, surveyFile, 'lss']);
-                if (data.error) throw new Error (data.error);
-                let surveyId = data.result;
-                // console.log("Survey created! SurveyId: " + surveyId);
-                resolve(surveyId);
-             } catch(error) {
-                reject(error);
-             }
-        })
-    }
-    
-    async activateSurvey(surveyId) {
-        console.log("activate");
-        try {
-            if (!this.#activeConnection) {
-                throw new Error("No active connection! Establish a connection first by calling openConnection()!");
-            }
-            let data = await lrpc_req('activate survey, survey ' + surveyId, 'activate_survey', [this.#sessionKey, surveyId]);
-            if (data.error) throw new Error (data.error);
-            // console.log("Survey activated; sid:", surveyId);
-         } catch(error) {
-            // console.error("Survey could not be activated; sid:", surveyId);
-            throw new Error(error);
-         }
-    }
-
-    async mailRegisteredParticipants(surveyId) {
-        try {
-            if (!this.#activeConnection) {
-                throw new Error("No active connection! Establish a connection first by calling openConnection()!");
-            }
-            let data = await lrpc_req('invite participants, survey ' + surveyId, 'mail_registered_participants', [this.#sessionKey, surveyId, [/*use default conditions*/]]);
-            if (data.error) throw new Error (data.error);
-            // console.log("Participant Table initialized for survey ", surveyId);
-         } catch(error) {
-            // console.error("Participant Table could not be initialized for survey ", surveyId);
-            throw new Error(error);
-         }
-    }
-
-    async mailRegisteredParticipant(surveyId, participantToken) {
-        try {
-            if (!this.#activeConnection) {
-                throw new Error("No active connection! Establish a connection first by calling openConnection()!");
-            }
-            let data = await lrpc_req('invite participants, survey ' + surveyId, 'mail_registered_participants', [this.#sessionKey, surveyId, participantToken]);
-            if (data.error) throw new Error (data.error);
-            // console.log("Participant Table initialized for survey ", surveyId);
-         } catch(error) {
-            // console.error("Participant Table could not be initialized for survey ", surveyId);
-            throw new Error(error);
-         }
-    }
-
-    async inviteParticipants(surveyId, participantTokens, pendingOnly) {
-        try {
-            if (!this.#activeConnection) {
-                throw new Error("No active connection! Establish a connection first by calling openConnection()!");
-            }
-            let data = await lrpc_req('invite participants, survey ' + surveyId, 'invite_participants', [this.#sessionKey, surveyId, participantTokens, pendingOnly]);
-            if (data.error) throw new Error (data.error);
-            // console.log("participants invited ", surveyId);
-         } catch(error) {
-            // console.error("Participants not invited ", surveyId);
-            throw new Error(error);
-         }
-    }
-
-    async remindParticipants(surveyId) {
-        try {
-            if (!this.#activeConnection) {
-                throw new Error("No active connection! Establish a connection first by calling openConnection()!");
-            }
-            let data = await lrpc_req('remind participants, survey ' + surveyId, 'remind_participants', [this.#sessionKey, surveyId]);
-            if (data.error) throw new Error (data.error);
-            // console.log("participants invited ", surveyId);
-         } catch(error) {
-            // console.error("Participants not invited ", surveyId);
-            throw new Error(error);
-         }
-    }
-
-    async activateTokens(surveyId, attributeData) {
-        console.log("attribute-data:", attributeData);
-        try {
-            if (!this.#activeConnection) {
-                throw new Error("No active connection! Establish a connection first by calling openConnection()!");
-            }
-            let data = await lrpc_req('activate tokens, survey ' + surveyId, 'activate_tokens', [this.#sessionKey, surveyId/*, attributeData*/]);
-            if (data.error) throw new Error (data.error);
-            // console.log("Participant Table initialized for survey ", surveyId);
-         } catch(error) {
-            // console.error("Participant Table could not be initialized for survey ", surveyId);
-            throw new Error(error);
-         }
-    }
-
-    async addParticipants(surveyId, participantData) {
-        try {
-            if (!this.#activeConnection) {
-                throw new Error("No active connection! Establish a connection first by calling openConnection()!");
-            }
-
-            var data = await lrpc_req('add participant, survey ' + surveyId, 'add_participants', [this.#sessionKey, surveyId, participantData]); // not adding participant data. no longer used, since pipeline adds this to the data.
-            if (data.error) throw new Error (data.error);
-            // console.log(participantData.length, "participant(s) added for survey", surveyId);
-            return (data.result[0].token);
-         } catch(error) {
-            console.error(data)
-            // console.error("Participant could not be added for survey ", surveyId);
-            if (error.response) {
-                // The request was made and the server responded with a status code
-                // that falls out of the range of 2xx
-                console.log(error.response.data);
-                console.log(error.response.status);
-                console.log(error.response.headers);
-              } else if (error.request) {
-                // The request was made but no response was received
-                // `error.request` is an instance of XMLHttpRequest in the browser and an instance of
-                // http.ClientRequest in node.js
-                console.log(error.request);
-              } else {
-                // Something happened in setting up the request that triggered an Error
-                console.log('Error', error.message);
-              }
-              console.log(error.config);
-         }
-    }
-
-    async deleteSurvey(surveyId) {
-        console.log("deleting");
-        if(!surveyId) return "No surveyId specified."
-        try {
-            if (!this.#activeConnection) {
-                throw new Error("No active connection! Establish a connection first by calling openConnection()!");
-            }
-
-            let response = await lrpc_req('delete survey, survey ' + surveyId, 'delete_survey', [this.#sessionKey, surveyId]);
-            if (response.error) throw new Error (response.error);
-            return (response.result);
-         } catch(error) {
-            console.error("Participant could not be added for survey ", surveyId);
-            throw new Error(error);
-         }
-    }
-
-    async listParticipants(surveyId) {
-        try {
-            if (!this.#activeConnection) {
-                throw new Error("No active connection! Establish a connection first by calling openConnection()!");
-            }
-            let data = await lrpc_req('list_participants, survey '+surveyId, 'list_participants', [this.#sessionKey, surveyId, 0, 10000, false, ["attribute_1", "attribute_2"]]);
-            if (data.error) 
-            console.log(data.result);
-            return(data.result);
-        } catch (error) {
-            console.log(error);
-        }  
-    }
-
-    async updateParticipant(surveyId, participantToken, participantData) {
-        try {
-            if (!this.#activeConnection) {
-                throw new Error("No active connection! Establish a connection first by calling openConnection()!");
-            }
-
-            var data = await lrpc_req('set_participant_properties, survey ' + surveyId, 'set_participant_properties', [this.#sessionKey, surveyId, participantToken, participantData]); // not adding participant data. no longer used, since pipeline adds this to the data.
-            if (data.error) throw new Error (data.error);
-            // console.log(participantData.length, "participant(s) added for survey", surveyId);
-            return (data.result[0].token);
-         } catch(error) {
-            console.error(data)
-            // console.error("Participant could not be added for survey ", surveyId);
-            if (error.response) {
-                // The request was made and the server responded with a status code
-                // that falls out of the range of 2xx
-                console.log(error.response.data);
-                console.log(error.response.status);
-                console.log(error.response.headers);
-              } else if (error.request) {
-                // The request was made but no response was received
-                // `error.request` is an instance of XMLHttpRequest in the browser and an instance of
-                // http.ClientRequest in node.js
-                console.log(error.request);
-              } else {
-                // Something happened in setting up the request that triggered an Error
-                console.log('Error', error.message);
-              }
-        }
-    }
-
-    // async updateParticipant(surveyId, participantToken, attributeData) {
-    //     try {
-    //         if (!this.#activeConnection) {
-    //             throw new Error("No active connection! Establish a connection first by calling openConnection()!");
-    //         }
-    //         let data = await lrpc_req('set_participant_properties, survey '+surveyId, 'set_participant_properties', [this.#sessionKey, surveyId, participantToken, attributeData]);
-    //         if (data.error) 
-    //         console.log(data.result);
-    //         console.log(surveyId)
-    //         return(data.result);
-            
-    //     } catch (error) {
-    //         console.log(error);
-    //         console.log(surveyId)
-    //     }
-
-    // }
-
-    connectionIsActive () {
-        return this.#activeConnection;
-    }
-
-    getSessionKey () {
-        return this.#sessionKey;
-    }
-}
-
+// creating and configuring expressjs server 
 const PORT = 3001;
-let app = express();
-
 const HTTP = {
     OK: 200, 
     CREATED: 201, 
@@ -956,194 +30,21 @@ const HTTP = {
     INTERNAL_ERROR: 500,
 }
 
+let app = express();
+
 app.use(cors());
 app.use(bodyParser.json());
 
-// Defining the connection to mariadb on localhost with sequalize
-if (!connection) return;
+/** Create REST API endpoints 
+ * C for Create: HTTP POST
+ * R for Read: HTTP GET
+ * U for Update: HTTP PUT
+ * D for Delete: HTTP DELETE
+ */ 
 
-let akcoredb = new Sequelize(
-    connection.db_name,
-    connection.db_username,
-    connection.db_password,
-    {
-        host: connection.db_host,
-        dialect: 'mariadb',
-        logging: false,
-    }    
-)
-
-// Establishing a connection with sequlalize to the mysql "sequalizedb" database
-akcoredb.authenticate().then(() => {
-    console.log('Connection to the database has been established successfully.');
-}).catch((error) => {
-    console.error('Unable to connect to the database: ', error);
-});
-
-const Organisation = akcoredb.define('organisation', {
-    organisationId:{
-        type: DataTypes.INTEGER,
-        primaryKey: true,
-        autoIncrement: true
-    },
-    organisationName:{
-        type: DataTypes.STRING
-    }
-}, {
-    timestamps: false
-});
-
-const Mitarbeiter = akcoredb.define('mitarbeiter', {
-    mitarbeiterId:{
-        type: DataTypes.INTEGER,
-        primaryKey: true,
-        autoIncrement: true
-    },
-    mitarbeiterName: {
-        type: DataTypes.STRING
-    },
-    mitarbeiterEmail: {
-        type: DataTypes.STRING
-    },
-}, {
-    timestamps: false
-});
-
-// const Account = akcoredb.define('mitarbeiter', {
-//     accountId:{
-//         type: DataTypes.INTEGER,
-//         autoIncrement: true
-//     },
-//     accountName:{
-//         type: DataTypes.STRING
-//     },
-//     accountPasswort:{
-//         type: DataTypes.STRING
-//     },
-//     accountType: {
-//         type: DataTypes.STRING
-//     }
-// }, {
-//     timestamps: false
-// });
-
-const Abteilung = akcoredb.define('abteilung', {
-    abteilungId: {
-        type: DataTypes.INTEGER,
-        primaryKey: true,
-        autoIncrement: true
-    },
-    abteilungName: {
-        type: DataTypes.STRING,
-        allowNull: false,
-    }
-}, {
-    timestamps: false
-});
-
-
-const Projekt = akcoredb.define('projekt', {
-    projektId:{
-        type: DataTypes.INTEGER,
-        primaryKey: true,
-        autoIncrement: true
-    },
-    projektName: {
-        type: DataTypes.STRING
-    },
-    projektBeschreibung: {
-        type: DataTypes.STRING
-    },
-    projektStartDate: {
-        type: DataTypes.DATEONLY
-
-    },
-    projektEndDate: {
-        type: DataTypes.DATEONLY
-    },
-    projektKibanaDashboardId: {
-        type: DataTypes.STRING,
-    }
-}, {
-    timestamps: false
-});
-
-const Umfrage = akcoredb.define('umfrage', {   
-    umfrageId:{
-        type: DataTypes.INTEGER,
-        primaryKey: true,
-        autoIncrement: true
-    }, 
-    umfrageStartDate: {
-        type: DataTypes.DATEONLY
-    },
-    umfrageEndDate: {
-        type: DataTypes.DATEONLY
-    },
-    umfrageLimesurveyId: {
-        type: DataTypes.STRING
-    }
-}, {
-    timestamps: false
-});
-
-const ProjektTeilnahme = akcoredb.define('projektTeilnahme', {
-    mitarbeiterRolle:{
-        type: DataTypes.STRING
-    },
-}, {
-    timestamps: false
-});
-
-const FuelltAus = akcoredb.define('fuelltAus', {
-    mitarbeiterLimesurveyTokenId:{
-        type: DataTypes.STRING
-    },
-    projektId: {
-        type: DataTypes.INTEGER
-    }
-}, {
-    timestamps: false
-});
-
-
-// Defining associations:
-// Organisation 1 :: n Mitarbeiter
-Organisation.hasMany(Mitarbeiter, {foreignKey: 'organisationId'});
-Mitarbeiter.belongsTo(Organisation, {foreignKey: 'organisationId'});
-
-// Organisation 1 :: n Abteilung
-Organisation.hasMany(Abteilung, {foreignKey: 'organisationId'});
-Abteilung.belongsTo(Organisation, {foreignKey: 'organisationId'});
-
-// Abteilung 1 :: n Mitarbeiter
-Abteilung.hasMany(Mitarbeiter, {foreignKey: 'abteilungId'});
-Mitarbeiter.belongsTo(Abteilung, {foreignKey: 'abteilungId'});
-
-// Organisation 1 :: n Projekt
-Organisation.hasMany(Projekt, {foreignKey: 'organisationId'});
-Projekt.belongsTo(Organisation, {foreignKey: 'organisationId'});
-
-// Projekt 1 :: n Umfrage
-Projekt.hasMany(Umfrage, {foreignKey: 'projektId'});
-Umfrage.belongsTo(Projekt, {foreignKey: 'projektId'});
-
-// Projekt m :: n Mitarbeiter
-Projekt.belongsToMany(Mitarbeiter, { through: ProjektTeilnahme });
-Mitarbeiter.belongsToMany(Projekt, { through: ProjektTeilnahme });
-
-// Mitarbeiter m :: n Umfrage
-Mitarbeiter.belongsToMany(Umfrage, { through: FuelltAus });
-Umfrage.belongsToMany(Mitarbeiter, { through: FuelltAus });
-
-// Mitarbeiter.belongsToMany(Projekt, { through: 'nimmtTeil' })
-
-// Create REST API endpoints
-// C for Create: HTTP POST
-// R for Read: HTTP GET
-// U for Update: HTTP PUT
-// D for Delete: HTTP DELETE
-
+/** 
+ * API ENDPOINTS FOR ORGANISATIONS
+ */
 app.get("/organisations", async (req, res) => {
     console.log("GET /organisations");
 
@@ -1156,19 +57,35 @@ app.get("/organisations", async (req, res) => {
     }
 });
 
+
 /** 
  * API ENDPOINTS FOR MITARBEITER
  */
 
+/**
+ * GET all employees for a specific organization ID
+ * @param {object} req - Express request object
+ * @param {object} res - Express response object
+ * @returns {object} Returns a JSON object containing all employees for a specific organization ID
+ */
 app.get("/mitarbeiterAll/:organisationId", async (req, res) => {
     let organisationId = req.params.organisationId;
     console.log("GET /mitarbeiterAll/"+organisationId);
 
     try {
+        // Check if organization ID is provided, return error if missing
         if (!organisationId) return res.sendStatus(HTTP.BAD_REQUEST);
+
+        // Check if organization exists, return error if not found
         if(!(await Organisation.findOne({where:{organisationId: organisationId}}))) return res.sendStatus(HTTP.NOT_FOUND);
 
-        let mitarbeiter = await Mitarbeiter.findAll({where: { organisationId: organisationId}, include: [Umfrage, Projekt]});
+        // Find all employees for specific organization and include related surveys and projects
+        let mitarbeiter = await Mitarbeiter.findAll( { 
+            where: { organisationId: organisationId}, 
+            include: [Umfrage, Projekt]
+        });
+        
+        // Return JSON response with all employees
         return res.send(mitarbeiter);
 
     } catch (e) {
@@ -1177,13 +94,22 @@ app.get("/mitarbeiterAll/:organisationId", async (req, res) => {
     }
 });
 
+/**
+ * POST endpoint for creating a new Mitarbeiter
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ */
 app.post("/mitarbeiter", async (req, res) => {
     console.log("POST /mitarbeiter");
 
     try {
         data = req.body; // the data sent by the client in request body
-        if( !data.mitarbeiterName || !data.mitarbeiterEmail || !data.abteilungId || !data.organisationId ) return res.sendStatus(HTTP.BAD_REQUEST); 
+        if( !data.mitarbeiterName || !data.mitarbeiterEmail || !data.abteilungId || !data.organisationId ) {
+            // Return HTTP BAD_REQUEST if required data is missing
+            return res.sendStatus(HTTP.BAD_REQUEST);
+        }
 
+        // Create a new Mitarbeiter record in the database with the provided data
         await Mitarbeiter.create({ 
             mitarbeiterName: data.mitarbeiterName, 
             mitarbeiterEmail: data.mitarbeiterEmail, 
@@ -1191,6 +117,7 @@ app.post("/mitarbeiter", async (req, res) => {
             organisationId: data.organisationId
         });
 
+        // Return HTTP CREATED status code to indicate that the record was successfully created
         return res.sendStatus(HTTP.CREATED);
 
     } catch (e) {
@@ -1304,11 +231,6 @@ app.get("/projekt/:projektId", async(req, res) => {
             }]
         });
         
-        // const result = await Projekt.findOne({
-        //     where: { projektId: projektId },
-        //     include: [Mitarbeiter, Umfrage]
-        // });
-
         if (!result) return res.sendStatus(HTTP.NOT_FOUND);
         return res.send(result);
 
@@ -1325,6 +247,7 @@ app.post("/projekt", async (req, res) => {
     try {
         data = req.body; // the data sent by the client in request body
 
+        // check if all required data for creating a project is present
         if (!data.projektName || 
             !data.projektBeschreibung || 
             !data.projektStartDate || 
@@ -1334,34 +257,35 @@ app.post("/projekt", async (req, res) => {
                 console.log("bad request")
                 return res.sendStatus(HTTP.BAD_REQUEST);
         }
-        data.projektKibanaDashboardId = "";
+
+        data.projektKibanaDashboardId = ""; // set the project Kibana dashboard ID to an empty string, because it does not have a default value when a new project is created
+        
         // create new projekt
         let projekt = await Projekt.create(data);
 
-        // Opening a connection to LimeSurvey RPC
+        // create a new LimeSurvey RPC client and open a connection
         client = new LRPC();
         await client.openConnection();
-        console.log(client.isActive());
 
-        // let surveyIds = []; // array of created surveyIds
-        // adding all umfragen to projekt
+        // create each survey in LimeSurvey and add it to the project
         for (u of data.umfragen) {
             let surveyFile = new SurveyFile(u.umfrageStartDate, u.umfrageEndDate, "AK Core Admin", "nifranz@uni-potsdam.de", projekt.projektName, projekt.projektBeschreibung);
-            await surveyFile.createFile(); // creating the file in fs
+            await surveyFile.createFile(); // creating a new survey file from the survey source file on disk
             await client.createSurvey(surveyFile.getPathToFile())
             .then( async surveyId => {     
-                await client.activateSurvey(surveyId);     
-                await client.activateTokens(surveyId, [1,2]);                
-                // surveyIds.push(surveyId); 
+                await client.activateSurvey(surveyId); // activate the survey in limesurvey
+                await client.activateTokens(surveyId, [1,2]); // initialize the participant table for the survey in limesurvey
                 u.umfrageLimesurveyId = surveyId;
                 let umfrage = await Umfrage.create(u);
-                await projekt.addUmfrage(umfrage);
+                await projekt.addUmfrage(umfrage); // add the survey to the project
             }).catch(error => {
                 handleError(error);
             });
-            surveyFile.destroyFile();
+
+            surveyFile.destroyFile(); // delete the survey file from disk
         }
-        // adding all teilnehmer to projekt
+
+        // add each participant to the project
         for (teiln of data.teilnehmer) {
             console.log("Teilnehmer-Data:", teiln);
             let teilnId = teiln.mitarbeiterId;
@@ -1369,10 +293,11 @@ app.post("/projekt", async (req, res) => {
                 where: {mitarbeiterId: teilnId},
                 include: [Abteilung]
             });
-            await projekt.addMitarbeiter(teilnehmer, { through: { mitarbeiterRolle: teiln.mitarbeiterRolle } });
+
+            await projekt.addMitarbeiter(teilnehmer, { through: { mitarbeiterRolle: teiln.mitarbeiterRolle } }); // add the participant to the project
         }
 
-        // get all newly created projektTeilnehmer and projektUmfragen from projekt
+        // retrieve all the newly created project participants and surveys
         projekt = await Projekt.findOne({ 
             where: {projektId: projekt.projektId},
             include: [{ 
@@ -1383,7 +308,7 @@ app.post("/projekt", async (req, res) => {
         let projektTeilnehmer = projekt.mitarbeiters;
         let projektUmfragen = projekt.umfrages;       
 
-        // adding participants to survey in limesurvey and write token id for each mitarbeiter in database
+       // add each participant to each survey and write the token ID to the database
         for (let teilnehmer of projektTeilnehmer) {
             for (let umfr of projektUmfragen) {
                 // adding participant to limesurvey
@@ -1397,20 +322,18 @@ app.post("/projekt", async (req, res) => {
                         projektId: projekt.projektId 
                     } 
                 })
-
-                // ProjektTeilnahme.update(
-                //     { limesurveyTokenId: limesurveyTokenId }, 
-                //     { where: { mitarbeiterMitarbeiterId: teilnehmer.mitarbeiterId, projektProjektId: projekt.projektId } }
-                // );
             }
         }
-        // create kibana spaces and indices
 
+        // create kibana space        
+        let kibClient = new KIBAPI();
+        await kibClient.createKibanaSpace(projekt.projektId, projekt.projektName);
+        
+        // create elasticsearch indices
         let esClient = new ESAPI();
-        await createKibanaSpace(projekt.projektId, projekt.projektName);
         await esClient.createProjektIndices(projekt.projektId);
 
-        console.log("   -> Creating Project successfull");
+        console.log("  => Creating Project successfull");
         return res // the response
             .setHeader('Location', `/projekt/${projekt.projektId}`) // setting location header for the response to the client
             .set( { 'Access-Control-Expose-Headers': 'location', } ) // exposing location header
@@ -1513,10 +436,8 @@ app.put("/projekt/:projektId", async (req, res) => {
             }, { model: Umfrage }]
         });
         let allProjektTeilnehmer = projekt.mitarbeiters;
-        let allProjektUmfragen = projekt.umfrages;       
+        let allProjektUmfragen = projekt.umfrages;
 
-
-        // console.log(projekt)
         console.log(newSurveyIds);
 
         for (let teilnehmer of allProjektTeilnehmer) {
@@ -1582,7 +503,8 @@ app.delete('/projekt/:projektId', async(req,res) => {
         }
         
         // deleted related kibana space
-        await deleteKibanaSpace(projekt.projektId);
+        let kibClient = new KIBAPI();
+        await kibClient.deleteKibanaSpace(projekt.projektId);
 
         // delete related elasticsearch indices
         let esClient = new ESAPI();
@@ -1640,6 +562,17 @@ app.post("/abteilung/", async(req, res) => {
     }
 });
 
+/**
+ * DELETE request to delete an Abteilung and its associated Mitarbeiters if there are no Mitarbeiters assigned to the Abteilung.
+ *
+ * @function
+ * @name deleteAbteilung
+ * @param {string} req.params.abteilungId - The ID of the Abteilung to delete.
+ * @param {Object} req - The request object.
+ * @param {Object} res - The response object.
+ * @returns {Object} - Returns a response object with a status code.
+ * @throws {Object} - Throws an error if an exception occurs during the deletion process.
+ */
 app.delete("/abteilung/:abteilungId", async (req, res)  => {  
     console.log("DELETE /abteilung");
     try {
@@ -1665,6 +598,16 @@ app.delete("/abteilung/:abteilungId", async (req, res)  => {
 
 /** 
  * API ENDPOINTS FOR LOGIN VERIFICATION
+ */
+
+/**
+ * Handle the POST request to verify user login credentials.
+ * @function
+ * @name verifyLogin
+ * @param {object} req - The HTTP request object.
+ * @param {object} res - The HTTP response object.
+ * @returns {Promise<void>} - The Promise object representing the completion of the function.
+ * @throws {Error} - An error occurred while handling the request.
  */
 app.post("/verifyLogin", async (req, res) => {
     console.log("POST /verifyLogin", req.body);
@@ -1735,483 +678,151 @@ app.get("/inviteParticipants", async(req, res) => {
 
 });
 
-app.get("/testInv/:surveyId", async(req,res) => {
-    if (req.params.surveyId == "none") {
-        var surveyId = 161788;
-    } else {
-        var surveyId = req.params.surveyId;
-    }
+app.get("/injectDataAll", async (req, res) => {
+    console.log("GET /injectDataAll")
+
+    // request for all projekte
+    let projekte = await Projekt.findAll({
+        include: [Umfrage]
+    });
+
+    try {
+        for (projekt of projekte) {
+            console.log(`⎡ Executing injection for projekt: ${projekt.projektName}`);
+            if (!projekt) return res.sendStatus(HTTP.NOT_FOUND);
+            let surveyIndex = 0;
+            for (umfr of projekt.umfrages) {
+                surveyIndex++; // variable used to create iterated Survey_Name column in elastic search
+                if (umfr.umfrageStartDate > getToday()) {
+                    console.log(`⎢  - excluding umfrage (id:${umfr.umfrageId}, start: ${umfr.umfrageStartDate} - end: ${umfr.umfrageEndDate}) => umfrage has not yet started!`);
+                    continue; // exclude all surveys that have not yet started
+                }
+                if (umfr.umfrageEndDate < getYesterday()) {
+                    console.log(`⎢  - excluding umfrage (id:${umfr.umfrageId}, start: ${umfr.umfrageStartDate} - end: ${umfr.umfrageEndDate}) => umfrage has already been completed!`);
+                    continue;
+                }
+                console.log(`⎢⎡ + including umfrage (id:${umfr.umfrageId}, start: ${umfr.umfrageStartDate} - end: ${umfr.umfrageEndDate}) => umfrage is currently active! `);
+                let surveyId = umfr.umfrageLimesurveyId
+                // building the pipeline input object
+                // - get mitarbeiter data for pipeline ingestion
+                let umfrageProjekt = await Projekt.findOne({
+                    where: { projektId: projekt.projektId },
+                    include: { 
+                        model: Mitarbeiter,
+                        include: [{
+                            model: Umfrage,
+                            where: { umfrageId: umfr.umfrageId }
+                        }, Abteilung]
+                        }
+                });
+                let projektMitarbeiter = umfrageProjekt.mitarbeiters;
+                
+                let mitarbeiterData = {}
+                for (let ma of projektMitarbeiter) {
+                    mitarbeiterData[ma.umfrages[0].fuelltAus.mitarbeiterLimesurveyTokenId] = { "participantID": ma.mitarbeiterId, "rolle": ma.projektTeilnahme.mitarbeiterRolle, "abteilung": ma.abteilung.abteilungName };
+                }
+                let surveyData = {"surveyId": surveyId, "surveyIndex": surveyIndex, "surveyStartDate": umfr.umfrageStartDate, "surveyEndDate": umfr.umfrageEndDate}
+                let json = { "projektId": projekt.projektId, "surveyData": surveyData, "teilnehmerData": mitarbeiterData };
+        
+                // create a jsonfile to read from python script with "json" variable as file content
+                var filePath = __dirname + "/../pipeline/tmp.pipeline-input_" + surveyId + "_" + uuid.v4() + ".json"
+                await fs.writeFile(filePath, JSON.stringify(json), function(){});
+                
+                let data = await new Promise(async (resolve, reject) => {
+                    exec(`python3 ${__dirname}/../pipeline/ETL-Pipeline.py ${filePath} `, async (error, stdout, stderr) => {
+                        if (error) {
+                            console.log("Error while invoking python script!");
+                            console.log('error:', error.message);
+                            reject();
+                        }
+                        if (stderr) {            
+                            console.log("Error while executing python script!");
+                            console.log('stderr:', stderr);
+                            reject();
+                        }
+                        let pipeResultsFilePath = stdout.split('§')[0];
+                        let returnData = "";
+                        let data = await fs.readFile(pipeResultsFilePath, encoding = 'utf-8');
+                        await fs.unlink(pipeResultsFilePath); // delete the file created by python
+
+                        returnData = JSON.parse(data);        
+                        resolve(returnData);
+                    });
+                }).catch(() => {
+                    return null;
+                }).then(async (data) => {
+                    return data;
+                }).finally(async () => {
+                    // deleting the file after data was imported
+                    await fs.unlink(filePath);
+                });               
+        
+                if (data === null) return res.sendStatus(HTTP.INTERNAL_ERROR);
+        
+                projektId = data.projektId;
+                let pie = data.pie;
+                let count = data.count;
+                let responses = data.responses;
     
-    let client = new LRPC();
-    await client.openConnection();
-    await client.remindParticipants(surveyId);
-    // await client.inviteParticipants(surveyId, ["tid = E6UMoIta0zkTMcO"], false);
-    await client.mailRegisteredParticipants(surveyId);
-    await client.closeConnection();
-    return res.sendStatus(HTTP.OK);
-});
+                let esClient = new ESAPI(); // class used to connect to elastic search
+        
+                // writing all response documents
+                console.log("⎢⎢ injecting data to elastic search ...")
+                console.log("⎢⎢ writing documents to index 'responses' ...");
+                for (let documentId of Object.keys(responses)) {
+                    
+                    // the documentId is the desired id of an elasticsearch document: one entry of an index; 
+                    // in a tabular metaphor, the index is a table, the document is one row in that table. 
+                    // therefore, the documentId is used to adress a specific row.
+                    let indexId = `akcore_${projektId}_responses`
+                    await esClient.writeDataToDocument(indexId, documentId, responses[documentId], refresh = true);
+                };
+                console.log("⎢⎢ => done!");
 
-app.get("/triggerPipe/:surveyId/:tokenId/:answerId", async(req, res) => {    
-    let surveyId = req.params.surveyId;
-    let tokenId = req.params.tokenId;
-    let answerId = req.params.answerId;
-    console.log("GET /triggerPipe/"+surveyId+"/"+tokenId+"/"+answerId);
-
-    // get mitarbeiter data for pipeline ingestion
-    let umfrage = await Umfrage.findOne({
-        where: { umfrageLimesurveyId: surveyId },
-    });
-    if (!umfrage) return res.sendStatus(HTTP.NOT_FOUND);
-    let projekt = await Projekt.findOne({
-        where: { projektId: umfrage.projektId },
-        include: { 
-            model: Mitarbeiter,
-            include: [{
-                model: Umfrage,
-                where: { umfrageId: umfrage.umfrageId }
-            }, Abteilung]
-         }
-    });
-    if (!projekt) return res.sendStatus(HTTP.NOT_FOUND);
-    let projektMitarbeiter = projekt.mitarbeiters;
-    let mitarbeiterData = {}
-    for (let ma of projektMitarbeiter) {
-        mitarbeiterData[ma.umfrages[0].fuelltAus.mitarbeiterLimesurveyTokenId] = { "participantId": ma.mitarbeiterId, "rolle": ma.projektTeilnahme.mitarbeiterRolle, "abteilung": ma.abteilung.abteilungName };
-    }
-    let surveyData = { "surveyId": surveyId, "surveyStartDate": umfrage.umfrageStartDate, "surveyEndDate": umfrage.umfrageEndDate }
-    let json = { "surveyData": surveyData, "teilnehmerData": mitarbeiterData };
-
-    // create a jsonfile to read from python script with "json" variable as file content
-    let filePath = __dirname + "/../pipeline/tmp." + uuid.v4() + "_survey_" + surveyId + "_mitarbeiter-data.json"
-    await fs.writeFile(filePath, JSON.stringify(json), function(){});
-    await fs.unlink(filePath);
-
-    // exec(`python3 ${__dirname}/../pipeline/pipe.py ${filePath} `, async (error, stdout, stderr) => {
-    //     if (error) {
-    //         console.log('error:', error.message);
-    //         await fs.unlink(filePath);
-    //         return res.sendStatus(HTTP.INTERNAL_ERROR);
-    //     }
-    //     console.log("###########################\nExecuting python script...")
-    //     if (stderr) {            
-    //         console.log('stderr:', stderr);
-    //         await fs.unlink(filePath);
-    //         return res.sendStatus(HTTP.INTERNAL_ERROR);
-    //     }
-    //     console.log("stdout:", stdout);
-    //     console.log("Done!\n###########################")
-    //     await fs.unlink(filePath); // deleting the file after use
-    //     return res.sendStatus(HTTP.OK);
-    // })
-
-    let data = { // emulates the data returned by python script
-        "projektId": projekt.projektId,
-        "responsesTable": {
-            "surveyId01_participantId01": {
-                "spalte1": "value1",
-                "spalte2": "value2"
+                // writing all pie documents
+                console.log("⎢⎢ writing documents to index 'pie' ...");
+                for (let documentId of Object.keys(pie)) {
+                    // the documentId is the desired id of an elasticsearch document: one entry of an index. In a tabular metaphor, the index is a table, the document is one row in that table. the documentId is used to adress a specific row.
+                    let indexId = `akcore_${projektId}_pie`
+                    await esClient.writeDataToDocument(indexId, documentId, pie[documentId], refresh = true);
+                };
+                console.log("⎢⎢ => done!")        
+                
+                // writing all count documents
+                console.log("⎢⎢ writing documents to index 'count' ...");
+                for (let documentId of Object.keys(count)) {
+                    // the documentId is the desired id of an elasticsearch document: one entry of an index In a tabular metaphor, the index is a table, the document is one row in that table. the documentId is used to adress a specific row.
+                    let indexId = `akcore_${projektId}_count`
+                    await esClient.writeDataToDocument(indexId, documentId, count[documentId]);
+                };
+                console.log("⎢⎢ => done!")
+                console.log(`⎢⎣ \u2713 data injection to elasticsearch for umfrage (id:${umfr.umfrageId}, start: ${umfr.umfrageStartDate} - end: ${umfr.umfrageEndDate}) completed!`)
             }
-        },
-        "pieTable": {
-        },
-        "countTable": {
+            console.log(`⎣ ✓ Injection complete.
+            `);
         }
-    }
-    let projektId = data.projektId;
-    let pie = data.pieTable;
-    let count = data.countTable;
-    let responses = data.responsesTable;
-
-    let esClient = new ESAPI();
-
-    // writing all response documents
-    for (let documentId of Object.keys(responses)) {
-        // the documentId is the desired id of an elasticsearch document: one entry of an index In a tabular metaphor, the index is a table, the document is one row in that table. the documentId is used to adress a specific row.
-        let indexId = `akcore_${projektId}_responses`
-        // await esClient.writeDataToDocument(indexId, documentId, responses[documentId]);
-    };
-
-    // writing all pie documents
-    for (let documentId of Object.keys(pie)) {
-        // the documentId is the desired id of an elasticsearch document: one entry of an index. In a tabular metaphor, the index is a table, the document is one row in that table. the documentId is used to adress a specific row.
-        let indexId = `akcore_${projektId}_pie`
-        // await esClient.writeDataToDocument(indexId, documentId, pie[documentId]);
-    };
-
-    // writing all count documents
-    for (let documentId of Object.keys(count)) {
-        // the documentId is the desired id of an elasticsearch document: one entry of an index In a tabular metaphor, the index is a table, the document is one row in that table. the documentId is used to adress a specific row.
-        let indexId = `akcore_${projektId}count`
-        // await esClient.writeDataToDocument(indexId, documentId, count[documentId]);
-    };
-
+    } catch(error) {
+        return res.status(HTTP.INTERNAL_ERROR).send(error);
+    }    
     return res.sendStatus(HTTP.OK);
-});
-
-app.get("/test/writeToIndex", async (req, res) => {
-    let esClient = new ESAPI();
-    await esClient.writeDataToDocument("akcore_testindex_pie","nan_29_R1", {
-        "SurveyID_LS": 512,
-        "SurveyID": "February 2023",
-        "ParticipantID": 29,
-        "Department": "Projektteam",
-        "Role": "Key-User",
-        "Rx": 1,
-        "Percent": NaN
-    }, refresh = true);
-
-    return res.sendStatus(HTTP.OK);
-});
-
-app.get("/triggerPipe2/:surveyId/:tokenId/:answerId", async(req, res) => {    
-    let surveyId = req.params.surveyId;
-    let tokenId = req.params.tokenId;
-    let answerId = req.params.answerId;
-    console.log("GET /triggerPipe2/"+surveyId+"/"+tokenId+"/"+answerId);
-
-    // get mitarbeiter data for pipeline ingestion
-    let umfrage = await Umfrage.findOne({
-        where: { umfrageLimesurveyId: surveyId },
-    });
-    if (!umfrage) return res.sendStatus(HTTP.NOT_FOUND);
-    let projekt = await Projekt.findOne({
-        where: { projektId: umfrage.projektId },
-        include: { 
-            model: Mitarbeiter,
-            include: [{
-                model: Umfrage,
-                where: { umfrageId: umfrage.umfrageId }
-            }, Abteilung]
-         }
-    });
-    if (!projekt) return res.sendStatus(HTTP.NOT_FOUND);
-    let projektMitarbeiter = projekt.mitarbeiters;
-    let mitarbeiterData = {}
-    for (let ma of projektMitarbeiter) {
-        mitarbeiterData[ma.umfrages[0].fuelltAus.mitarbeiterLimesurveyTokenId] = { "participantID": ma.mitarbeiterId, "rolle": ma.projektTeilnahme.mitarbeiterRolle, "abteilung": ma.abteilung.abteilungName };
-    }
-    let surveyData = {"surveyId": surveyId, "surveyStartDate": umfrage.umfrageStartDate, "surveyEndDate": umfrage.umfrageEndDate}
-    let json = { "projektId": projekt.projektId, "surveyData": surveyData, "teilnehmerData": mitarbeiterData };
-
-    // create a jsonfile to read from python script with "json" variable as file content
-    var filePath = __dirname + "/../pipeline/tmp.survey_" + surveyId + "_mitarbeiter-data_" + uuid.v4() + ".json"
-    await fs.writeFile(filePath, JSON.stringify(json), function(){});
-    
-    let data = await new Promise(async (resolve, reject) => {
-        exec(`python3 ${__dirname}/../pipeline/ETL-Pipeline.py ${filePath} `, async (error, stdout, stderr) => {
-            if (error) {
-                console.log("Error while invoking python script!");
-                console.log('error:', error.message);
-                reject();
-            }
-            if (stderr) {            
-                console.log("Error while executing python script!");
-                console.log('stderr:', stderr);
-                reject();
-            }
-            console.log("stdout:", stdout);
-            let pipeResultsFilePath = stdout.split('§')[0];
-            let returnData = "";
-            console.log("'"+pipeResultsFilePath+"'")
-            let data = await fs.readFile(pipeResultsFilePath, encoding = 'utf-8');
-            await fs.unlink(pipeResultsFilePath); // delete the file created by python
-            console.log(typeof(data))
-            // console.log(data)
-
-           // console.log(json)
-            returnData = JSON.parse(data);
-
-            
-            
-            // returnData= { 
-            //     "projektId": projekt.projektId,
-            //     "responsesTable": {
-            //         "surveyId01_participantId01": {
-            //             "spalte1": "value1",
-            //             "spalte2": "value2"
-            //         }
-            //     },
-            //     "pieTable": {
-            //     },
-            //     "countTable": {
-            //     }
-            // }
-            console.log(returnData);
-            resolve(returnData);
-        });
-    }).catch(() => {
-        return null;
-    }).then(async (data) => {
-        return data;
-    }).finally(async () => {
-         // deleting the file after data was imported
-         await fs.unlink(filePath);
-    });
-    
-
-    if (data === null) return res.sendStatus(HTTP.INTERNAL_ERROR);
-
-    let projektId = data.projektId;
-    let pie = data.pie;
-    let count = data.count;
-    let responses = data.responses;
-
-    let esClient = new ESAPI();
-
-    // writing all response documents
-    for (let documentId of Object.keys(responses)) {
-        // the documentId is the desired id of an elasticsearch document: one entry of an index In a tabular metaphor, the index is a table, the document is one row in that table. the documentId is used to adress a specific row.
-        let indexId = `akcore_${projektId}_responses`
-        await esClient.writeDataToDocument(indexId, documentId, responses[documentId], refresh = true);
-    };
-
-    // writing all pie documents
-    for (let documentId of Object.keys(pie)) {
-        // the documentId is the desired id of an elasticsearch document: one entry of an index. In a tabular metaphor, the index is a table, the document is one row in that table. the documentId is used to adress a specific row.
-        let indexId = `akcore_${projektId}_pie`
-        console.log("indexing pie");
-        await esClient.writeDataToDocument(indexId, documentId, pie[documentId], refresh = true);
-    };
-
-    // writing all count documents
-    for (let documentId of Object.keys(count)) {
-        // the documentId is the desired id of an elasticsearch document: one entry of an index In a tabular metaphor, the index is a table, the document is one row in that table. the documentId is used to adress a specific row.
-        let indexId = `akcore_${projektId}_count`
-        await esClient.writeDataToDocument(indexId, documentId, count[documentId]);
-    };
-
-    return res.sendStatus(HTTP.OK);    
 });
 
 /** 
  * EXPERIMENTAL API ENDPOINTS
  */
 
-app.get("/kibanaApiCall/:method", async (req, res) => {
-    const response = await axios.get("http://localhost:5601/kibana/s/7/api/saved_objects/dashboard", {
-        headers: {
-        'Content-Type': 'application/json',
-        'kbn-xsrf': 'true',
-        'Authorization': 'ApiKey eDdSV1o0WUJXUzk3dlFqZi1HY2U6M1R4ZHJEcjFTT3lfTV8teU1LSGM1UQ=='
-        },
-    });
-    console.log(response.data.error);
-    console.log(response.data)
-    return res.sendStatus(HTTP.OK);
-});
-
-app.get("/kibanaApiCallDev", async (req, res) => {
-    axios.request({
-        method: 'GET',
-        url: 'http://localhost:5601/kibana/api/spaces/space',
-        headers: {
-            'Content-Type': 'application/json',
-            'kbn-xsrf': 'true',
-            'Authorization': 'ApiKey eDdSV1o0WUJXUzk3dlFqZi1HY2U6M1R4ZHJEcjFTT3lfTV8teU1LSGM1UQ=='
-        },
-         data: {
-                "id": "source",
-                "name": "sourcespace",
-         }
-    }).then(function (response) {
-        console.log(response.data);
-    })
-    .catch(function (error) {
-        console.error(error);
-    });
-    return res.sendStatus(HTTP.OK);
-});
-
-async function deleteKibanaSpace(projektId) {
-    await axios.request({
-        method: 'DELETE',
-        url: 'http://localhost:5601/kibana/api/spaces/space/'+projektId,
-        headers: {
-            'Content-Type': 'application/json',
-            'kbn-xsrf': 'true',
-            'Authorization': 'ApiKey eDdSV1o0WUJXUzk3dlFqZi1HY2U6M1R4ZHJEcjFTT3lfTV8teU1LSGM1UQ=='
-        }
-    }).then(function (response) {
-        console.log(response.data);
-    })
-    .catch(function (error) {
-        console.error(error);
-        return null;
-    });
-}
-
-async function createKibanaSpace(projektId, projektName) {
-    projektId = projektId + "";
-    // let projId = "proj1";
-    // let projektName = "ERP System"
-    let log = false;
-
-    // creating new kibana space
-    await axios.request({
-        method: 'POST',
-        url: 'http://localhost:5601/kibana/api/spaces/space',
-        headers: {
-            'Content-Type': 'application/json',
-            'kbn-xsrf': 'true',
-            'Authorization': 'ApiKey eDdSV1o0WUJXUzk3dlFqZi1HY2U6M1R4ZHJEcjFTT3lfTV8teU1LSGM1UQ=='
-        },
-         data: {
-                "id": projektId+"",
-                "name": projektName,
-         }
-    }).then(function (response) {
-        if (log) console.log(response.data);
-    })
-    .catch(function (error) {
-        console.error(error);
-        return null;
-    });
-
-    // the source dashboard in kibana; this will be copied to the new kibana project  space
-    let moodboardSourceObject = {
-        id: '66a487c9-6517-445b-85be-f37890b62af2',
-        type: 'dashboard'
-    }
-
-    // copying moodboard object form kibana space "source" to new projekt space
-    await axios.request({
-        method: 'POST',
-        url: 'http://localhost:5601/kibana/s/source/api/spaces/_copy_saved_objects',
-        headers: {
-            'Content-Type': 'application/json',
-            'kbn-xsrf': 'true',
-            'Authorization': 'ApiKey eDdSV1o0WUJXUzk3dlFqZi1HY2U6M1R4ZHJEcjFTT3lfTV8teU1LSGM1UQ=='
-        },
-         data: {
-            spaces: [projektId],
-            objects: [moodboardSourceObject],
-            includeReferences: true
-         }
-    }).then(async function (response) {
-        if (log) console.log(response.data[projektId]);
-        console.log(response.data[projektId].successResults);
-
-        // saving the id of the dashboard (kibana saved object) to projekt database for later reference
-        let projektKibanaDashboardId = "";
-        for (savedObject of response.data[projektId].successResults) {
-            // of all saved objects that have been copied to the new kibana-space: get the one saved object that matches the source dashboard id (moodboardSourceObject) and save its destination id (new object) to db
-            if (savedObject.id == moodboardSourceObject.id) {
-                projektKibanaDashboardId = savedObject.destinationId;
-            }
-        }
-        let projekt = await Projekt.findOne({
-            where: {projektId: projektId}
-        });
-        // save the projektKibanaDashboardId to projekt
-        projekt.set({
-            projektKibanaDashboardId: projektKibanaDashboardId,
-        });
-        await projekt.save();
-    })
-    .catch(function (error) {
-        console.error(error);
-        return null;
-    });
-
-    // get dataview id of the projekt-dataview used for the moodboard in the new space
-    let dataviewId;
-    await axios.request({
-        method: 'GET',
-        url: 'http://localhost:5601/kibana/s/'+projektId+'/api/data_views',
-        headers: {
-            'Content-Type': 'application/json',
-            'kbn-xsrf': 'true',
-            'Authorization': 'ApiKey eDdSV1o0WUJXUzk3dlFqZi1HY2U6M1R4ZHJEcjFTT3lfTV8teU1LSGM1UQ=='
-        },
-    }).then(function (response) {
-        for (dataview of response.data["data_view"]) {
-            if (dataview.name == "AKCORE_DEV") {
-                dataviewId = dataview.id;
-                break;
-            }
-        }
-        if (log) console.log(response.data);
-    })
-    .catch(function (error) {
-        console.error(error);
-        return null;
-    });
-
-    // update projekt-dataview properties "name" and "title". the new title now references the correct projekt indeces, rather the old source indeces.
-    await axios.request({
-        method: 'POST',
-        url: 'http://localhost:5601/kibana/s/'+projektId+'/api/data_views/data_view/'+dataviewId,
-        headers: {
-            'Content-Type': 'application/json',
-            'kbn-xsrf': 'true',
-            'Authorization': 'ApiKey eDdSV1o0WUJXUzk3dlFqZi1HY2U6M1R4ZHJEcjFTT3lfTV8teU1LSGM1UQ=='
-        },
-         data: {
-            // "refresh_fields": true,
-            "data_view": {
-                "title": "akcore_"+projektId+"_*",
-                "name": "akcore_"+projektId+"_dataview"
-            }
-         }
-    }).then(function (response) {
-        if (log) console.log(response.data);
-    })
-    .catch(function (error) {
-        console.error(error);
-        return null;
-    });
-
-    return projektId;
-}
-
-app.get("/res2", async (req, res) => {
-    let esClient = new ESAPI();
-    await esClient.createProjektResIndex(7);
-    return res.sendStatus(HTTP.OK);
-})
-
-// app.get("/testUpdateIndices", async (req, res) => {
-//     let data = {
-//         "projektId": "abc",
-//         "responses": {
-//             "surveyId01_participantId01": {
-//                 "spalte1": "value1",
-//                 "spalte2": "value2"
-//             }
-//         },
-//         "pie": {
-//         },
-//         "count": {
-//         }
-//     }
-//     let projektId = data.projektId;
-//     let pie = data.pieData;
-//     let count = data.countData;
-//     let responses = data.responsesData;
-
-//     let esClient = new ESAPI();
-
-//     for (responseId of Object.keys(responses)) {
-//         let indexId = `akcore_${projektId}_responses`
-//         let documentId = repsonseId;
-//         await esClient.writeDataToDocument(indexId, documentId, responses[responseId]);
-//     }
-// })
-
+// starting the server and listen to the specified port
 akcoredb
     .sync({})
     .then(() => {
         app.listen(PORT, async () => {
-            initLogs();
+            // Create 3 organisations in the database on startup. This is necessary if the database has been flushed
             // creating an entry that already exists in the database will result in an error, so we want to catch that error
             // this way, we only create that entries when the database is first initialized 
             try { await Organisation.findOrCreate( { where: {organisationId: 1, organisationName: "LSWI-Lehrstuhl" } }); } catch (error) { console.log(error); }
             try { await Organisation.findOrCreate( { where: {organisationId: 2, organisationName: "Marketing-Lehrstuhl" } }); } catch (error) { console.log(error); }
             try { await Organisation.findOrCreate( { where: {organisationId: 3, organisationName: "Informatik-Lehrstuhl" } }); } catch (error) { console.log(error); }
 
-            // try { await Abteilung.findOrCreate( { where: { abteilungId: 1, abteilungName: "Verkauf", organisationId: 1 }}); } catch (error) { console.log(error); }
-            // try { await Abteilung.findOrCreate( { where: { abteilungId: 2, abteilungName: "Lager", organisationId: 1 }}); } catch (error) { console.log(error); }
-            // try { await Abteilung.findOrCreate( { where: { abteilungId: 3, abteilungName: "Management", organisationId: 1 }}); } catch (error) { console.log(error); }
 
             console.log('Listening on port localhost:' + PORT+ ". Apache redirects to this from /api/");
         })
