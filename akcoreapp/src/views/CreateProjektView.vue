@@ -156,7 +156,7 @@
             },
             async refreshData() {
                 this.loading = true;
-                this.mitarbeiter = await api.getMitarbeiterAll(this.organisationId);
+                this.mitarbeiter = await api.getMitarbeiter(this.organisationId);
                 this.abteilungen = await api.getAbteilungen(this.organisationId);
                 this.loading = false;
             },

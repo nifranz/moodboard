@@ -1,19 +1,6 @@
 const fs = require('fs/promises')
-const fssync = require('fs')
-const express = require('express')
-const cors = require('cors')
-const bodyParser = require('body-parser')
-const { Sequelize, DataTypes } = require('sequelize')
 const axios = require('axios')
-const {exec, spawn} = require('child_process')
-const uuid = require('uuid')
-// const morgan = require('morgan')
 const connection = require('../connection')
-const replace = require('replace-in-file')
-const { Client } = require('@elastic/elasticsearch')
-const { Console } = require('console')
-
-const { akcoredb, Organisation, Projekt, Umfrage, Mitarbeiter, Abteilung, FuelltAus, ProjektTeilnahme } = require('../datamodels')
 
 const LIME_RPC_URL = 'http://bolarus.wi.uni-potsdam.de/index.php/admin/remotecontrol/';
 const LRPC_LOGGING = true;
@@ -27,7 +14,6 @@ function logLRPC(id, response) {
     console.log(message)
     fs.appendFile(LRPC_LOG_PATH, timeString + message + "\r\n", (error) => {});
 }
-
 
 /**
  * Make a HTTP-POST request to the limesurvey rpc using axios HTTP library

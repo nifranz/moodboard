@@ -2,6 +2,15 @@ const fs = require('fs/promises')
 const uuid = require('uuid')
 const replace = require('replace-in-file')
 
+const HTTP = {
+    OK: 200, 
+    CREATED: 201, 
+    BAD_REQUEST: 400, 
+    NOT_FOUND: 404,
+    NOT_ACCEPTABLE: 406,
+    INTERNAL_ERROR: 500,
+}
+
 /**
  * Class representing a Survey File.
  */
@@ -147,4 +156,4 @@ function handleError(error) {
     fs.appendFile(ERROR_LOG_PATH, timeString + error + "\r\n", (error) => {});
 }
 
-module.exports = { SurveyFile, getToday, getYesterday, handleError }
+module.exports = { HTTP, SurveyFile, getToday, getYesterday, handleError }

@@ -166,7 +166,7 @@
             async refreshData() {
                 this.loading = true;
                 this.projekt = await api.getProjekt(this.projektId)
-                this.mitarbeiter = await api.getMitarbeiterAll(this.organisationId);
+                this.mitarbeiter = await api.getMitarbeiter(this.organisationId);
                 this.abteilungen = await api.getAbteilungen(this.organisationId);
                 console.log(this.projekt)
 

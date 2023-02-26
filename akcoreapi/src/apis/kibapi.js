@@ -1,5 +1,6 @@
 const axios = require('axios')
-const { Projekt } = require('../datamodels')
+const Projekt = require('../models/projekt')
+require('../models/associations')
 const { kibanaapikey_base64 } = require('../connection')
 
 const kibanaBaseUrl = 'http://localhost:5601/kibana/';

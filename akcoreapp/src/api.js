@@ -21,14 +21,14 @@ export default {
         return response.data;
     },
     // MITARBEITER API
-    async getMitarbeiterAll (organisationId) {       
-        console.log("API: executing getMitarbeiterAll()") 
-        let response = await this.execute('get', `/mitarbeiterAll/${organisationId}`);
+    async getMitarbeiter (organisationId) {       
+        console.log("API: executing getMitarbeiter()") 
+        let response = await this.execute('get', `/mitarbeiter/${organisationId}`);
         console.log(response)
         return response.data;
     },
     async getAbteilungen (organisationId) {
-        console.log("API: executing getMitarbeiterAll()")      
+        console.log("API: executing getAbteilungen()")      
         let response = await this.execute('get', `/abteilungen/${organisationId}`);
         return response.data;
     },
@@ -39,9 +39,8 @@ export default {
         return response.data;
     },
     async updateMitarbeiter (data) {
-        let response = await this.execute('put', '/mitarbeiter', data);
+        let response = await this.execute('put', '/mitarbeiter/'+ data.mitarbeiterId, data);
         return response.data;
-
     },
     async deleteMitarbeiter (mitarbeiterId) {
         let response = await this.execute('delete', `/mitarbeiter/${mitarbeiterId}`);

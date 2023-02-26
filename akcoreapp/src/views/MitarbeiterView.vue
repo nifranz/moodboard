@@ -131,7 +131,7 @@
       async refreshData() {
         this.loading = true;
         try {
-          this.mitarbeiter = await api.getMitarbeiterAll(this.organisationId);
+          this.mitarbeiter = await api.getMitarbeiter(this.organisationId);
           this.abteilungen = await api.getAbteilungen(this.organisationId);
           console.log(this.abteilungen)
         } catch (e) {
