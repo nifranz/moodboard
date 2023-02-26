@@ -22,10 +22,16 @@ const { KIBAPI } = require('../apis/kibapi');
 const ProjektController = {};
 
 ProjektController.list = async (req, res) => {
-  let organisationId = req.params.organisationId;
-  console.log("GET /projekt/"+organisationId);
+    let { organisationId } = req.query;
+  console.log("GET /projekt for org: "+organisationId);
 
   try {
+    // READ all projekte for specific organisationId      
+    let projekte = await ProjektModel.findAll({
+        where: { organisationId: organisationId }, 
+        include: [MitarbeiterModel, UmfrageModel]
+    });
+    return res.send(projekte);
 
   } catch (err) {
     console.error(err);
@@ -36,8 +42,7 @@ ProjektController.list = async (req, res) => {
 ProjektController.create = async (req, res) => {
   console.log("CREATE /projekt/");
   console.log("POST /projekt");
-  let client;
-  
+ 
   try {
       data = req.body; // the data sent by the client in request body
 

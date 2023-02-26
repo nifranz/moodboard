@@ -5,7 +5,7 @@ const router = express.Router();
 const ProjektController = require('../controllers/projekt');
 
 // Define endpoint handlers
-// router.get('/:organisationId', ProjektController.list);
+router.get('/', ProjektController.list);
 router.post('/', ProjektController.create);
 router.get('/:projektId', ProjektController.read);
 router.put('/:projektId', ProjektController.update);

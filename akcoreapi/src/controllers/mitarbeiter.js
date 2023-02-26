@@ -20,8 +20,8 @@ const { KIBAPI } = require('../apis/kibapi')
 const MitarbeiterController = {};
 
 MitarbeiterController.list = async (req, res) => {
-    let organisationId = req.params.organisationId;
-    console.log("GET /mitarbeiterAll/"+organisationId);
+    let { organisationId } = req.query;
+    console.log("GET /mitarbeiter for org: "+organisationId);
 
     try {
         // Check if organization ID is provided, return error if missing
