@@ -147,8 +147,7 @@ Backend
 ###### Bearbeiten
 <li>Es müssen die zu überarbeitenden Attribute [ mitarbeiterName | mitarbeiterEmail | abteilungId ] übergeben werden</li>
 <li>Über Sequelize wird der Mitarbeiter in der Datenbank aktualisiert</li>
-<li><strike>Für jede Umfrage, an der der Mitarbeiter teilnimmt, werden die neuen Attribute über LRPC in LimeSurvey aktualisiert</strike></li>
-<li><strong>Achtung!</strong> Da die LimesurveyRPC eine nicht gelöste Fehlermeldung zurückgibt, wenn ein Pa</li>
+<li><strike>Für jede Umfrage, an der der Mitarbeiter teilnimmt, werden die neuen Attribute über LRPC in LimeSurvey aktualisiert</strike><strong>Achtung!</strong> Da die LimesurveyRPC eine nicht gelöste Fehlermeldung zurückgibt, wenn ein Participant über die funktion set_participant_attributes geupdated wird, werden die Attribute zur Zeit nicht in Limesurvey aktualisiert</li>
 
 ##### 2.1.3 Projekte
 
