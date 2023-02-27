@@ -37,9 +37,9 @@ In a production environment, the node app is run as a daemon (system service) on
 ## Documentation
 
 ### AKCORE FRONTEND (VUE)
-<ol>
-    <li>### Header</li>
-</ol>
+
+#### 1. Allgemeins
+
 Allgemeines
       Frameworks
 •	Die Website wurde mit dem Vue.js Frontend Framework gebaut
