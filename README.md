@@ -11,10 +11,10 @@ node, version > 19.3.0
 ### AKCORE FRONTEND (VUE)
 
 The frontend is developed with the Vue.js frontend web-framework. To run the Vue development server, while in the directory "/akcoreapp/", run  
-<ul>
-    <li>`npm install`</li>
-    <li>`npm run serve` </li>
-</ul> 
+
+`npm install`  
+`npm run serve` 
+
 
 This will run a development server listening at port 8081.
 
@@ -36,8 +36,7 @@ In a production environment, the vue app is deployed to a static web server, suc
 In a production environment, the node app is run as a daemon (system service) on a Linux system. This will automatically restart the server if it crashes and logs any stdin/stderr output to a specified log-file. This project is setup through a systemd-daemon called "nodeapi", logging stdin/stderr via rsyslog to /akcoreapi/logs/service.log. To follow the content of the log live in a terminal, while the service is active, you can run `less -f /home/nifranz/dev/git/akcore_stable/logs/error.log`. To start or stop the service, you can run with appropriate privileges `systemctl [start | stop | restart] nodeapi`. 
 ## Documentation
 
-###### AKCORE Frontend (VUE)
-
+Frontend
 ### 1. Allgemeines
 #### 1.1 Frameworks
 <ul>
@@ -45,11 +44,12 @@ In a production environment, the node app is run as a daemon (system service) on
 <li>das CSS-Styling wurde mit dem Bootstrap Framework realisiert</li>
 <li>für http-requests wurde das AXIOS Framework genutzt</li>
 
-#### 1.2 Aufbau
+#### 1.2 Aufbau der Website
 <li>die Navigationbar und die RouterView wurden in App.js eingebaut, der main file des Vue-Frameworks</li>
 <li>Die Ansichten wie der Login-Screen, die Mitarbeiter-Ansicht und Projekt-Ansicht wurden über das Vue-RouterView Konzept als Views in die main file App.js eingebunden; klickt man auf einen Nav-Link, um beispielsweise zur Mitarbeiter-View zu gelangen, wird die aktuelle RouterView durch die MitarbeiterView ersetzt</li>
 <li>häufig wiederverwendeter Code wurde als Component in die Views integriert, wie zum Beispiel der Loading-Anzeiger, um Code-Redundanz zu minimieren
-#### 1.3 Kommunikation mit dem Backend</li>
+
+#### 1.3 Kommunikation mit dem Backend
 <li>müssen einzelne Views mit dem Backend kommunizieren, tun sie das über Funktionen, die die app.js Datei bereitstellt. Hierzu wird die api.js file in jede View imporiert. Es werden alle nötigen Daten an diese Funktionen weitergegeben</li>
 <li>die Funktionen der api starten dann die http requests über axios (einer http request library für nodejs), indem sie die korrekten API-URIS aufrufen und im request body die daten aus den views an das backend übergeben</li>
 
@@ -63,7 +63,7 @@ In a production environment, the node app is run as a daemon (system service) on
 #### 2.2 Mitarbeiter 
 <li>ermöglicht Anlegen und Bearbeiten von Mitarbeitern und Abteilungen</li>
 <li>Mitarbeiter sind Abteilungen zugeordnet und können nicht abteilungslos sein</li>
-<li>Mitarbeiter benötigen die Felder „Name“, „E-Mail“</li>
+<li>Mitarbeiter benötigen Name und E-Mail</li>
 <li>Abteilungen benötigen einen Namen</li>
 <li>Mitarbeiter und Abteilungen existieren nach dem Erstellen in der Datenbank</li>
 <li>- es findet (noch) keine Frontend-Validierung statt</li>
@@ -92,6 +92,5 @@ In a production environment, the node app is run as a daemon (system service) on
 <li>dem Backend werden die Projekt-Informationen sowie die organisationId des Users übergeben; die Projekt-Informationen enthalten die alten sowie die neuen Projektinformationen gleichermaßen</li>
 <li>das Backend übergibt eine Erfolgsmeldung nach Erfolg und das Frontend leitet zur Projektansicht weiter</li>
 </ul>
-### AKCORE BACKEND API (EXPRESSJS)
 
-TBD
+Backend
