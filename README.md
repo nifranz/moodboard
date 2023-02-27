@@ -142,7 +142,7 @@ Backend
 <li>Über Sequelize wird der Mitarbeiter in der Datenbank angelegt</li>
 
 ###### Bearbeiten
-<li>Es müssen die zu überarbeitenden Attribute [ mitarbeiterName | mitarbeiterEmail | abteilungId ] übergeben werden</li>
+⋅ Es müssen die zu überarbeitenden Attribute [ mitarbeiterName | mitarbeiterEmail | abteilungId ] übergeben werden
 <li>Über Sequelize wird der Mitarbeiter in der Datenbank aktualisiert</li>
 <li>~~Für jede Umfrage, an der der Mitarbeiter teilnimmt, werden die neuen Attribute über LRPC in LimeSurvey aktualisiert~~</li>
 <li>**Achtung!** Da die LimesurveyRPC eine nicht gelöste Fehlermeldung zurückgibt, wenn ein Pa</li>
