@@ -21,10 +21,9 @@ This will run a development server listening at port 8081.
 ### AKCORE BACKEND API (EXPRESSJS)
 
 The backend is developed with express.js for node. To run the express.js api server, while in the directory "/akcoreapi/", run  
-<ul>
-    <li>`npm install`</li>
-    <li>`npm run serve` </li>
-</ul> 
+
+`npm install`  
+`npm run serve` 
 
 This will run a exprees.js api server listening at port 3001.
 
@@ -47,7 +46,7 @@ Frontend
 #### 1.2 Aufbau der Website
 <li>die Navigationbar und die RouterView wurden in App.js eingebaut, der main file des Vue-Frameworks</li>
 <li>Die Ansichten wie der Login-Screen, die Mitarbeiter-Ansicht und Projekt-Ansicht wurden über das Vue-RouterView Konzept als Views in die main file App.js eingebunden; klickt man auf einen Nav-Link, um beispielsweise zur Mitarbeiter-View zu gelangen, wird die aktuelle RouterView durch die MitarbeiterView ersetzt</li>
-<li>häufig wiederverwendeter Code wurde als Component in die Views integriert, wie zum Beispiel der Loading-Anzeiger, um Code-Redundanz zu minimieren
+<li>häufig wiederverwendeter Code wurde als Component in die Views integriert, wie zum Beispiel der Loading-Anzeiger, um Code-Redundanz zu minimieren</li>
 
 #### 1.3 Kommunikation mit dem Backend
 <li>müssen einzelne Views mit dem Backend kommunizieren, tun sie das über Funktionen, die die app.js Datei bereitstellt. Hierzu wird die api.js file in jede View imporiert. Es werden alle nötigen Daten an diese Funktionen weitergegeben</li>
