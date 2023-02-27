@@ -39,6 +39,8 @@ In a production environment, the node app is run as a daemon (system service) on
 ### AKCORE FRONTEND (VUE)
 
 #### 1. Allgemeins
+##### Frameworks
+###### Subcategory
 
 Allgemeines
       Frameworks
