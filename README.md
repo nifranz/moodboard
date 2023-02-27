@@ -1,5 +1,3 @@
-[//]: # Dependencies
-[ERM]: documentation/readme/database_erm.png "ERM-Datenmodell"
 
 # AKCORE APP
 
@@ -127,7 +125,7 @@ Backend
 <li>Soll eine Datenbankoperation durchgeführt werden, werden enstprechende Methoden der Sequelize-Models ausgeführt (z. B. erstellt die Methode MitarbeiterModel.create(mitarbeiterData) einen Mitarbeiter in der mariadb-Datenbank)</li>
 <li>Die Struktur der Daten wird durch folgendes ERM illustriert:</li>  
 
-![Alt text][ERM]
+![alt text](documentation/readme/database_erm.png) "ERM-Datenmodell"
 
 ##### 1.2.4 Externe APIS
 
