@@ -37,7 +37,7 @@ In a production environment, the node app is run as a daemon (system service) on
 
 Frontend
 ### 1. Allgemeines
-#### 1.1 Frameworks
+#### 1.1 Frameworks und Dependencies
 <ul>
 <li>Die Website wurde mit dem Vue.js Frontend Framework gebaut</li>
 <li>das CSS-Styling wurde mit dem Bootstrap Framework realisiert</li>
@@ -93,3 +93,39 @@ Frontend
 </ul>
 
 Backend
+
+### 1. Allgemeines
+#### 1.1 Frameworks und Dependencies
+<ul>
+<li>Der HTTP-API-Server wurde mit dem node.js-Framework express.js gebaut</li>
+<li>Es wurde das ORM-Package Sequelize genutzt, um alle persistenten Daten zu modellieren und Datenbankfuntionen umzusetzen</li>
+<li>Die Daten werden in einer mariadb Datenbank des Linux-Servers gespeichert</li>
+<li>Um die Elasticsearch-API anzusprechen, wurde der elastic-search client für node.js genutzt</li>
+<li>Es wurde das uuid-Package genutzt, um uuids generieren zu können</li>
+
+#### 1.2 Aufbau
+##### 1.2.1 API-Endpoints und Routing
+<li>Der Server bietet mehrere API-Endpoints an, um Backend-Funktionalitäten bereitzustellen</li>
+<li>Einige dieser Endpoints sind über die express.js router-Funktionalität eingebunden, andere werden direkt (z.b mit app.get()) definiert</li>
+<li>Die routes wurden in src/routes/ definiert und im router der app in server.js-file eingebunden.</li>
+<li>Routes leiten die Anfrage an die Controller weiter, welche dann die Durchführung der angefragten Funktionen steuern</li>
+
+##### 1.2.2 Controller
+<li>Die Funktionalitäten der API-Endpoints werden durch Controller gesteuert, welche in src/controller definiert sind</li>
+<li>Für jedes Data-Model (und damit alle Datenbankoperationen) existiert ein Controller</li>
+<li>Zur Zeit existieren nur für Datenbankoperationen Controller, alle anderen Funktionalitäten werden noch in der server.js-file gesteuert und umgesetzt</li>
+<li>Zur Zeit findet die Durchführung der Business-Logic (wie zum Beispiel die Durchführung einer Datenbankoperation) ebenfalls im Controller statt. In Zukunft können und sollte die Business-Logic von den Controllern in express-helper-services und -middlewares ausgelagert werden</li>
+
+##### 1.2.3 Datenbank und Sequelize Object-Relational-Mapper (ORM)
+<li>Die Daten werden in der mariadb Datenbank des Linux-Servers gespeichert. Hierfür existiert die Database "akcoredb" in mariadb</li>
+<li>Die Verbindung zur Datenbank wird über Sequelize hergestellt</li>
+<li>Die Datenmodellierung und Datenbankoperationen werden über Sequelize realisiert</li>
+<li>Die Sequelize Entity-Models und ihre Relationen wurden in src/models/ definiert</li>
+<li>Soll eine Datenbankoperation durchgeführt werden, werden enstprechende Methoden der Sequelize-Models ausgeführt (z. B. erstellt die Methode MitarbeiterModel.create(mitarbeiterData) einen Mitarbeiter in der mariadb-Datenbank)</li>
+
+##### 1.2.4 Externe APIS
+
+### Funtionalitäten
+
+
+</ul> 
