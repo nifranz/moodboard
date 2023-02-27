@@ -135,10 +135,9 @@ Backend
 
 #### 2.1 Datenbankoperationen
 ##### 2.1.2 Abteilungen
-<li></li>
 
 ##### 2.1.1 Mitarbeiter
-<li>Mitarbeiter können erstellt, bearbeitet und gelöscht werden</li>
+Mitarbeiter können erstellt, bearbeitet und gelöscht werden
 
 ###### Erstellen
 <li>Es müssen die Attribute mitarbeiterName, mitarbeiterEmail, abteilungId und organisationId übergeben werden</li>
