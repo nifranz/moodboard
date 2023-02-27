@@ -36,7 +36,7 @@ In a production environment, the node app is run as a daemon (system service) on
 ## Documentation
 
 Frontend
-### 1. Allgemeines
+### 1 Allgemeines
 #### 1.1 Frameworks und Dependencies
 <ul>
 <li>Die Website wurde mit dem Vue.js Frontend Framework gebaut</li>
@@ -52,7 +52,7 @@ Frontend
 <li>müssen einzelne Views mit dem Backend kommunizieren, tun sie das über Funktionen, die die app.js Datei bereitstellt. Hierzu wird die api.js file in jede View imporiert. Es werden alle nötigen Daten an diese Funktionen weitergegeben</li>
 <li>die Funktionen der api starten dann die http requests über axios (einer http request library für nodejs), indem sie die korrekten API-URIS aufrufen und im request body die daten aus den views an das backend übergeben</li>
 
-### 2. Funktionalitäten
+### 2 Funktionalitäten
 #### 2.1 Einloggen
 <li>über einen Login-Screen, der angezeigt wird, wenn ein Nutzer nicht eingeloggt ist, kann sich ein Nutzer anmelden</li>
 <li>dem Backend werden Nutzername und Passwort übergeben</li>
@@ -94,7 +94,7 @@ Frontend
 
 Backend
 
-### 1. Allgemeines
+### 1 Allgemeines
 #### 1.1 Frameworks und Dependencies
 <ul>
 <li>Der HTTP-API-Server wurde mit dem node.js-Framework express.js gebaut</li>
@@ -122,14 +122,44 @@ Backend
 <li>Die Datenmodellierung und Datenbankoperationen werden über Sequelize realisiert</li>
 <li>Die Sequelize Entity-Models und ihre Relationen wurden in src/models/ definiert</li>
 <li>Soll eine Datenbankoperation durchgeführt werden, werden enstprechende Methoden der Sequelize-Models ausgeführt (z. B. erstellt die Methode MitarbeiterModel.create(mitarbeiterData) einen Mitarbeiter in der mariadb-Datenbank)</li>
-<li>Die Struktur der Daten wird durch folgendes ERM illustriert:</li>
+<li>Die Struktur der Daten wird durch folgendes ERM illustriert:</li>  
 
-[ERM]: documentation/readme/database_erm.png "ERM-Datenmodell"
 ![Alt text][ERM]
 
 ##### 1.2.4 Externe APIS
 
-### Funtionalitäten
+### 2 Funtionalitäten
 
+#### 2.1 Datenbankoperationen
+##### 2.1.2 Abteilungen
+<li></li>
+
+##### 2.1.1 Mitarbeiter
+<li>Mitarbeiter können erstellt, bearbeitet und gelöscht werden</li>
+
+###### Erstellen
+<li>Es müssen die Attribute mitarbeiterName, mitarbeiterEmail, abteilungId und organisationId übergeben werden</li>
+<li>Über Sequelize wird der Mitarbeiter in der Datenbank angelegt</li>
+
+###### Bearbeiten
+<li>Es müssen die zu überarbeitenden Attribute [ mitarbeiterName | mitarbeiterEmail | abteilungId ] übergeben werden</li>
+<li>Über Sequelize wird der Mitarbeiter in der Datenbank aktualisiert</li>
+<li>~~Für jede Umfrage, an der der Mitarbeiter teilnimmt, werden die neuen Attribute über LRPC in LimeSurvey aktualisiert~~</li>
+<li>**Achtung!** Da die LimesurveyRPC eine nicht gelöste Fehlermeldung zurückgibt, wenn ein Pa</li>
+
+##### 2.1.3 Projekte
+
+##### 2.1.4 Umfragen
+
+#### 2.2 Service-Integrationen
+
+##### 2.2.1 LimeSurvey
+
+##### 2.2.2 ElasticSearch
+
+##### 2.2.3 Kibana
 
 </ul>
+
+[//]: # Dependencies
+[ERM]: documentation/readme/database_erm.png "ERM-Datenmodell"
