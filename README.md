@@ -1,3 +1,6 @@
+[//]: # Dependencies
+[ERM]: documentation/readme/database_erm.png "ERM-Datenmodell"
+
 # AKCORE APP
 
 This gitup-repository contains the source code of the akcore frontend app and backend api developed as part of the the A&K-Project of ${PARTICIPANTS} at the University of Potsdam in the winter semester of 2022/2023.
@@ -142,11 +145,10 @@ Backend
 <li>Über Sequelize wird der Mitarbeiter in der Datenbank angelegt</li>
 
 ###### Bearbeiten
-⋅ test
-⋅⋅ Es müssen die zu überarbeitenden Attribute [ mitarbeiterName | mitarbeiterEmail | abteilungId ] übergeben werden
+<li>Es müssen die zu überarbeitenden Attribute [ mitarbeiterName | mitarbeiterEmail | abteilungId ] übergeben werden</li>
 <li>Über Sequelize wird der Mitarbeiter in der Datenbank aktualisiert</li>
-<li>~~Für jede Umfrage, an der der Mitarbeiter teilnimmt, werden die neuen Attribute über LRPC in LimeSurvey aktualisiert~~</li>
-<li>**Achtung!** Da die LimesurveyRPC eine nicht gelöste Fehlermeldung zurückgibt, wenn ein Pa</li>
+<li style="text-decoration: underline;">Für jede Umfrage, an der der Mitarbeiter teilnimmt, werden die neuen Attribute über LRPC in LimeSurvey aktualisiert</li>
+<li style="font-weight: bold;">Achtung!** Da die LimesurveyRPC eine nicht gelöste Fehlermeldung zurückgibt, wenn ein Pa</li>
 
 ##### 2.1.3 Projekte
 
@@ -162,5 +164,3 @@ Backend
 
 </ul>
 
-[//]: # Dependencies
-[ERM]: documentation/readme/database_erm.png "ERM-Datenmodell"
