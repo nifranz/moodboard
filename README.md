@@ -1,7 +1,7 @@
 <!-- Headers-->
 <div style="text-align: center;"> 
     <div style="font-size: 20px; color:#323232; margin-bot:0px;">A&K-Bachelorprojekt:</div>
-    <div style="font-size: 60px; font-weight: bold; color:#323232; margin-top:0px;">Umfrage-System</div>
+    <div style="font-size: 60px; font-weight: bold; color:#323232; margin-top:0px;">Moodboard-System</div>
     <div style="font-size: 35px;">Universität Potsdam</div>
     <div style="font-size: 20px;">Wintersemester 2022/23</div>
 </div>
@@ -22,7 +22,6 @@ The frontend is developed with the Vue.js frontend web-framework. To run the Vue
 
 `npm install`  
 `npm run serve` 
-
 
 This will run a development server listening at port 8081.
 
@@ -102,6 +101,12 @@ In a production environment, the vue app is deployed to a static web server, suc
 <li>das Backend übergibt eine Erfolgsmeldung nach Erfolg und das Frontend leitet zur Projektansicht weiter</li>
 </ul>
 
+### 2.4 Nutzer
+<ul>
+<li>Die Nutzerverwaltung ist zur Zeit noch nicht umgesetzt. Es können keine Nutzeraccounts angesehen, erstellt oder bearbeitet werden</li>
+<li>Das Freischalten bzw. Beschränken einiger Funktionen basierend auf dem Account-Typ (Change-Manager sollen keine Nutzeraccounts einsehen und Projekte oder Mitarbeiter bearbeiten können) ist noch nicht umgesetzt</li>
+</ul>
+
 # Backend
 ### Prerequisites
 npm, version > 9.2.0  
@@ -134,7 +139,18 @@ In a production environment, the node app is run as a daemon (system service) on
 <li>Einige dieser Endpoints sind über die express.js router-Funktionalität eingebunden, andere werden direkt (z.b mit app.get()) definiert</li>
 <li>Die routes wurden in src/routes/ definiert und im router der app in server.js-file eingebunden.</li>
 <li>Routes leiten die Anfrage an die Controller weiter, welche dann die Durchführung der angefragten Funktionen steuern</li>
+<li>Die CRUD-Operationen der Controller werden durch folgende HTTP Request Methoden erreicht.</li>
 </ul>
+
+| CRUD                                | HTTP                     |
+| ----------------------------------- | ------------------------ |
+| <code>ModelController.list()</code> | <code>GET /model/</code> |
+| <code>ModelController.read()</code> | <code>GET /model/:id</code> |
+| <code>ModelController.create()</code> | <code>POST /model/</code> |
+| <code>ModelController.update()</code> | <code>PUT /model/:id</code> |
+| <code>ModelController.delete()</code> | <code>DELETE /model/</code> |
+
+
 
 #### 1.2.2 Controller
 <ul>
@@ -159,11 +175,12 @@ In a production environment, the node app is run as a daemon (system service) on
 
 
 #### 1.2.4 Externe APIS
+In die Funktionen des Backends sind mehrere Aufrufe zu den APIs von LimeSurvey (LRPC), Elasticsearch (ESAPI) und Kibana (KIBAPI) eingebunden. Die Einbettung der externen API-Funktionen wurde durch API-Client-Klassen realisiert, welche Funktionen bereitstellen, die HTTP-Aufrufe an die API-Endpoints durchführen können und die zurückgegebenen Daten verarbeiten. Im Fall der Elasticsearch API wurde der bereits existierende Elasticsearch-API-Client für nodejs in einer eigenen Klasse gekapselt, um das Vorgehen bei Funktionsaufrufen innerhalb des Projekts zu vereinheitlichen. Eine Übersicht der Funktionsweise und der genutzten API-Endpoints ergibt sich aus dem dokumentierten Code der Klassen, welche in <code>src/apis/</code> definiert sind.
 
 ## 2 Funtionen
 
 ### 2.1 DataModel-Operationen (Controller Funktionen)
-Diese Auflistung der Controller-Funktionen der DataModels stellt lediglich eine Übersicht der Vorgehensweise des Systems bei der Durchführung der genannten Operationen dar. Eine ausführliche Deskription der Funktionsweise sowie weiterer Informationen wie Funktions-Parameter und -Rückgabewerte ergibt sich aus dem dokumentierten Code der einzelnen Controller in <code>src/controller/</code> sowie der DataModels selbst in <code>src/models/</code>.
+Diese Auflistung der Controller-Funktionen der DataModels stellt lediglich eine Übersicht der Vorgehensweise des Systems bei der Durchführung der genannten Operationen dar. Eine ausführliche Deskription der Funktionsweise sowie weiterer Informationen wie Funktions-Parameter und -Rückgabewerte ergibt sich aus dem dokumentierten Code der einzelnen Controller in <code>src/controller/</code> sowie der DataModels selbst in <code>src/models/</code>. 
 #### 2.1.2 Abteilungen
 Abteilungen können aufgelistet, erstellt und gelöscht werden
 
@@ -247,11 +264,32 @@ Projekte können aufgelistet, asugegeben, erstellt, überarbeitet und gelöscht 
 <li>Durch die Controller-Funktion <code>Projekt.delete()</code> wird ein Projekt aus der Datenbank gelöscht, die Assoziationen von Teilnehmern und dem Projekt gelöscht sowie alle Surveys des Projekts durch LRPC in LimeSurvey gelöscht</li>
 </ul>
 
-### 2.2 Service-Integrationen
+#### 2.1.4 Nutzer (Accounts)
+<ul>
+<li><strong style="color: #ED4F32;">Achtung!</strong> Das Konzept der Nutzer (Accounts) ist noch nicht vollständig umgesetzt </li>
+<li>Zur Zeit sind alle Nutzer in der server.js-File hardcoded und werden nur zur Verifizierung eines Benutzers beim Login verwendet</li>
+<li>Als nächster Schritt werden die Nutzeraccounts in die Datenbank durch neue Sequelize DataModels verlagert und API-Endpoints für die Nutzerverwaltung ähnlich der bereits existierenden API-Endpoints für Mitarbeiter geschrieben, um dem Frontend diese Funktionalität bereitzustellen</li>
+</ul>
 
-#### 2.2.1 LimeSurvey
+### 2.2 Utility Funktionen
 
-#### 2.2.2 ElasticSearch
+#### 2.2.1 LimeSurvey E-Mail Trigger
+<ul>
+<li>Durch einen Linux Cron-Job wird täglich um 9:30 Uhr die route <code>/utils/ls/emailtrigger</code> aufgerufen</li>
+<li>Der Service prüft für alle Projekte in der Datenbank, welche Umfragen zur Zeit aktiv sind</li>
+<li>Für alle aktiven Umfragen werden durch die LRPC-Funktion <code>LRPC.remindParticipants()</code> zunächst alle bereits eingeladenen Teilnehmer an die Teilnahme erinnert und anschließend alle nocht nicht eingeladenen Teilnehmer zur Teilnahme eingeladen (<code>LRPC.mailRegisteredParticipants()</code>)</li>
+</ul>
 
+#### 2.2.2 ElasticSearch Data Injection
+<ul>
+<li>Durch einen Linux Cron-Job wird alle 10 Minuten die route <code>/utils/es/datainject</code> aufgerufen</li>
+<li>Der Service prüft für alle Projekte in der Datenbank, welche Umfragen zur Zeit aktiv sind</li>
+<li>Für alle aktiven Umfragen wird ein JSON-Objekt mit den Attributen Rolle, Abteilung und mitarbeiterLimesurveyTokenId für alle Teilnehmer einer Umfrage erstellt</li>
+<li>Dieses Objekt wird in eine Datei gespeichert und der Dateipfad an das python-Datentransformationsskript übergeben, welches die Response-Daten der Teilnehmer aus Limesurvey extrahiert und für die Injection in die ElasticSearch Indices vorbereitet</li>
+<li>Über eine Datei, die das python-Skript erstellt hat, werden die transformierten Daten geladen und anschließend für jeden Daten-Eintrag (= elasticsearch document) die inject-Methode der ESAPI-Klasse <code>ESAPI.writeDataToDocument()</code> aufgerufen, wodurch die Daten in die Elasticsearch Indices des Projekts geschrieben werden</li>
+</ul>
 
+#### 2.2.3 Frontend-Login-Verifizierung
+<ul>
+<li>Wenn vom Frontend eine Login-Verifizierung über die route <code>/utils/verifyLogin</code> angefragt wird, überprüft das Backend, ob ein Account existiert, das übergebene Passwort mit dem Passwort aus der Datenbank übereinstimmt und gibt bei Erfolg den Account mit weiteren Attributen wie dem Account-Typ und der organisationId des Accounts zurück</li>
 </ul>
