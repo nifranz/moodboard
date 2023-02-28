@@ -30,9 +30,9 @@ This will run a development server listening at port 8081.
 In a production environment, the vue app is deployed to a static web server, such as apache2, to be served over http. This can be done by running the command `npm run build`, which will create a "dist" directory at /var/www/html/akcore/dist/, containing a single page application ready to be deployed. The webserver needs to be properly setup to be able to serve the site correctly. (How to setup: TBD)
 
 
-## Dokumentation
+Frontend
 ### 1. Allgemeines
-#### 1.1 Frameworks, Packages und Dependencies
+#### 1.1 Frameworks und Dependencies
 <ul>
 <li>Die Website wurde mit dem Vue.js Frontend Framework gebaut</li>
 <li>das CSS-Styling wurde mit dem Bootstrap Framework realisiert</li>
@@ -52,7 +52,7 @@ In a production environment, the vue app is deployed to a static web server, suc
 <li>die Funktionen der api starten dann die http requests über axios (einer http request library für nodejs), indem sie die korrekten API-URIS aufrufen und im request body die daten aus den views an das backend übergeben</li>
 </ul>
 
-### 2. Funktionalitäten
+### 2 Funktionalitäten
 #### 2.1 Einloggen
 <ul>
 <li>über einen Login-Screen, der angezeigt wird, wenn ein Nutzer nicht eingeloggt ist, kann sich ein Nutzer anmelden</li>
@@ -152,11 +152,40 @@ In a production environment, the node app is run as a daemon (system service) on
 <li>Soll eine Datenbankoperation durchgeführt werden, werden enstprechende Methoden der Sequelize-Models ausgeführt (z. B. erstellt die Methode MitarbeiterModel.create(mitarbeiterData) einen Mitarbeiter in der mariadb-Datenbank)</li>
 <li>Die Struktur der Daten wird durch folgendes ERM illustriert:</li>
 </ul>
-</br>
+</br >
 
-[ERM]: ./documentation/readme/ "ERM-Datenmodell"
+![alt text](documentation/readme/database_erm.png) "ERM-Datenmodell"
 
 
 #### 1.2.4 Externe APIS
 
-### Funtionalitäten
+### 2 Funtionalitäten
+
+#### 2.1 Datenbankoperationen
+##### 2.1.2 Abteilungen
+
+##### 2.1.1 Mitarbeiter
+Mitarbeiter können erstellt, bearbeitet und gelöscht werden
+
+###### Erstellen
+<li>Es müssen die Attribute mitarbeiterName, mitarbeiterEmail, abteilungId und organisationId übergeben werden</li>
+<li>Über Sequelize wird der Mitarbeiter in der Datenbank angelegt</li>
+
+###### Bearbeiten
+<li>Es müssen die zu überarbeitenden Attribute [ mitarbeiterName | mitarbeiterEmail | abteilungId ] übergeben werden</li>
+<li>Über Sequelize wird der Mitarbeiter in der Datenbank aktualisiert</li>
+<li><strike>Für jede Umfrage, an der der Mitarbeiter teilnimmt, werden die neuen Attribute über LRPC in LimeSurvey aktualisiert</strike>    
+<strong> Achtung!</strong> Da die LimesurveyRPC eine nicht gelöste Fehlermeldung zurückgibt, wenn ein Participant über die funktion set_participant_attributes geupdated wird, werden die Attribute zur Zeit nicht in Limesurvey aktualisiert</li>
+
+##### 2.1.3 Projekte
+
+##### 2.1.4 Umfragen
+
+#### 2.2 Service-Integrationen
+
+##### 2.2.1 LimeSurvey
+
+##### 2.2.2 ElasticSearch
+
+
+</ul>
