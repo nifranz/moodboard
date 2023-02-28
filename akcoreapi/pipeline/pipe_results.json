@@ -106,6 +106,41 @@
             "AvgA3": 3.6666666666666665,
             "AvgAll": 3.4
         },
+        "219721_17": {
+            "Survey_Name": "Survey 2 (February 2023)",
+            "SurveyID": "219721",
+            "PartParticipant": "yes",
+            "token": "HWsQNLKRyyT29hT",
+            "ParticipantID": 17,
+            "DateSent": "",
+            "Complete": false,
+            "Duration": 0.0,
+            "Department": "IT",
+            "Role": "User",
+            "Q1": "",
+            "Q2": "",
+            "Q3": "",
+            "Q4": "",
+            "O1": "",
+            "O2": "",
+            "O3": "",
+            "AvgA1": "",
+            "R1": "",
+            "R2": "",
+            "R3": "",
+            "M1": "",
+            "MQ1": "",
+            "MO1": "",
+            "Q5": "",
+            "Q6": "",
+            "Q7": "",
+            "Q8": "",
+            "Q9": "",
+            "Q10": "",
+            "O4": "",
+            "AvgA3": "",
+            "AvgAll": ""
+        },
         "219721_12": {
             "Survey_Name": "Survey 2 (February 2023)",
             "SurveyID": "219721",
@@ -175,6 +210,41 @@
             "O4": "",
             "AvgA3": "",
             "AvgAll": ""
+        },
+        "219721_7": {
+            "Survey_Name": "Survey 2 (February 2023)",
+            "SurveyID": "219721",
+            "PartParticipant": "yes",
+            "token": "1V82x7MSGw0nEUM",
+            "ParticipantID": 7,
+            "DateSent": "2023-02-27 18:39:30",
+            "Complete": true,
+            "Duration": 1.9333333333333333,
+            "Department": "Zentrallogistik",
+            "Role": "User",
+            "Q1": 3.0,
+            "Q2": 4.0,
+            "Q3": 4.0,
+            "Q4": 4.0,
+            "O1": "Mit der Teamleitung und deren Kommunukation",
+            "O2": "",
+            "O3": "",
+            "AvgA1": 3.75,
+            "R1": 30.0,
+            "R2": 40.0,
+            "R3": 30.0,
+            "M1": 1.0,
+            "MQ1": 4.0,
+            "MO1": "Mehr Interaktion",
+            "Q5": 2.0,
+            "Q6": 3.0,
+            "Q7": 2.0,
+            "Q8": 4.0,
+            "Q9": 3.0,
+            "Q10": 4.0,
+            "O4": "",
+            "AvgA3": 3.0,
+            "AvgAll": 3.3
         },
         "219721_4": {
             "Survey_Name": "Survey 2 (February 2023)",
@@ -281,41 +351,6 @@
             "AvgA3": 4.5,
             "AvgAll": 4.5
         },
-        "219721_7": {
-            "Survey_Name": "Survey 2 (February 2023)",
-            "SurveyID": "219721",
-            "PartParticipant": "",
-            "token": "1V82x7MSGw0nEUM",
-            "ParticipantID": 7,
-            "DateSent": "",
-            "Complete": "",
-            "Duration": "",
-            "Department": "Zentrallogistik",
-            "Role": "User",
-            "Q1": "",
-            "Q2": "",
-            "Q3": "",
-            "Q4": "",
-            "O1": "",
-            "O2": "",
-            "O3": "",
-            "AvgA1": "",
-            "R1": "",
-            "R2": "",
-            "R3": "",
-            "M1": "",
-            "MQ1": "",
-            "MO1": "",
-            "Q5": "",
-            "Q6": "",
-            "Q7": "",
-            "Q8": "",
-            "Q9": "",
-            "Q10": "",
-            "O4": "",
-            "AvgA3": "",
-            "AvgAll": ""
-        },
         "219721_11": {
             "Survey_Name": "Survey 2 (February 2023)",
             "SurveyID": "219721",
@@ -396,41 +431,6 @@
             "Complete": "",
             "Duration": "",
             "Department": "Filiale",
-            "Role": "User",
-            "Q1": "",
-            "Q2": "",
-            "Q3": "",
-            "Q4": "",
-            "O1": "",
-            "O2": "",
-            "O3": "",
-            "AvgA1": "",
-            "R1": "",
-            "R2": "",
-            "R3": "",
-            "M1": "",
-            "MQ1": "",
-            "MO1": "",
-            "Q5": "",
-            "Q6": "",
-            "Q7": "",
-            "Q8": "",
-            "Q9": "",
-            "Q10": "",
-            "O4": "",
-            "AvgA3": "",
-            "AvgAll": ""
-        },
-        "219721_17": {
-            "Survey_Name": "Survey 2 (February 2023)",
-            "SurveyID": "219721",
-            "PartParticipant": "",
-            "token": "HWsQNLKRyyT29hT",
-            "ParticipantID": 17,
-            "DateSent": "",
-            "Complete": "",
-            "Duration": "",
-            "Department": "IT",
             "Role": "User",
             "Q1": "",
             "Q2": "",
@@ -714,6 +714,33 @@
             "Rx": 3,
             "Percent": 60.0
         },
+        "219721_17_R1": {
+            "SurveyID": "219721",
+            "Survey_Name": "Survey 2 (February 2023)",
+            "ParticipantID": 17,
+            "Department": "IT",
+            "Role": "User",
+            "Rx": 1,
+            "Percent": ""
+        },
+        "219721_17_R2": {
+            "SurveyID": "219721",
+            "Survey_Name": "Survey 2 (February 2023)",
+            "ParticipantID": 17,
+            "Department": "IT",
+            "Role": "User",
+            "Rx": 2,
+            "Percent": ""
+        },
+        "219721_17_R3": {
+            "SurveyID": "219721",
+            "Survey_Name": "Survey 2 (February 2023)",
+            "ParticipantID": 17,
+            "Department": "IT",
+            "Role": "User",
+            "Rx": 3,
+            "Percent": ""
+        },
         "219721_12_R1": {
             "SurveyID": "219721",
             "Survey_Name": "Survey 2 (February 2023)",
@@ -767,6 +794,33 @@
             "Role": "User",
             "Rx": 3,
             "Percent": ""
+        },
+        "219721_7_R1": {
+            "SurveyID": "219721",
+            "Survey_Name": "Survey 2 (February 2023)",
+            "ParticipantID": 7,
+            "Department": "Zentrallogistik",
+            "Role": "User",
+            "Rx": 1,
+            "Percent": 30.0
+        },
+        "219721_7_R2": {
+            "SurveyID": "219721",
+            "Survey_Name": "Survey 2 (February 2023)",
+            "ParticipantID": 7,
+            "Department": "Zentrallogistik",
+            "Role": "User",
+            "Rx": 2,
+            "Percent": 40.0
+        },
+        "219721_7_R3": {
+            "SurveyID": "219721",
+            "Survey_Name": "Survey 2 (February 2023)",
+            "ParticipantID": 7,
+            "Department": "Zentrallogistik",
+            "Role": "User",
+            "Rx": 3,
+            "Percent": 30.0
         },
         "219721_4_R1": {
             "SurveyID": "219721",
@@ -849,33 +903,6 @@
             "Rx": 3,
             "Percent": 60.0
         },
-        "219721_7_R1": {
-            "SurveyID": "219721",
-            "Survey_Name": "Survey 2 (February 2023)",
-            "ParticipantID": 7,
-            "Department": "Zentrallogistik",
-            "Role": "User",
-            "Rx": 1,
-            "Percent": ""
-        },
-        "219721_7_R2": {
-            "SurveyID": "219721",
-            "Survey_Name": "Survey 2 (February 2023)",
-            "ParticipantID": 7,
-            "Department": "Zentrallogistik",
-            "Role": "User",
-            "Rx": 2,
-            "Percent": ""
-        },
-        "219721_7_R3": {
-            "SurveyID": "219721",
-            "Survey_Name": "Survey 2 (February 2023)",
-            "ParticipantID": 7,
-            "Department": "Zentrallogistik",
-            "Role": "User",
-            "Rx": 3,
-            "Percent": ""
-        },
         "219721_11_R1": {
             "SurveyID": "219721",
             "Survey_Name": "Survey 2 (February 2023)",
@@ -953,33 +980,6 @@
             "Survey_Name": "Survey 2 (February 2023)",
             "ParticipantID": 16,
             "Department": "Filiale",
-            "Role": "User",
-            "Rx": 3,
-            "Percent": ""
-        },
-        "219721_17_R1": {
-            "SurveyID": "219721",
-            "Survey_Name": "Survey 2 (February 2023)",
-            "ParticipantID": 17,
-            "Department": "IT",
-            "Role": "User",
-            "Rx": 1,
-            "Percent": ""
-        },
-        "219721_17_R2": {
-            "SurveyID": "219721",
-            "Survey_Name": "Survey 2 (February 2023)",
-            "ParticipantID": 17,
-            "Department": "IT",
-            "Role": "User",
-            "Rx": 2,
-            "Percent": ""
-        },
-        "219721_17_R3": {
-            "SurveyID": "219721",
-            "Survey_Name": "Survey 2 (February 2023)",
-            "ParticipantID": 17,
-            "Department": "IT",
             "Role": "User",
             "Rx": 3,
             "Percent": ""
@@ -1521,6 +1521,206 @@
             "CountA1": 0,
             "CountA3": 0
         },
+        "219721_IT_Key-User_1": {
+            "SurveyID": "219721",
+            "Survey_Name": "Survey 2 (February 2023)",
+            "Department": "IT",
+            "Role": "Key-User",
+            "Category": 1,
+            "CountAll": 0,
+            "CountA1": 0,
+            "CountA3": 0
+        },
+        "219721_IT_Key-User_2": {
+            "SurveyID": "219721",
+            "Survey_Name": "Survey 2 (February 2023)",
+            "Department": "IT",
+            "Role": "Key-User",
+            "Category": 2,
+            "CountAll": 0,
+            "CountA1": 0,
+            "CountA3": 0
+        },
+        "219721_IT_Key-User_3": {
+            "SurveyID": "219721",
+            "Survey_Name": "Survey 2 (February 2023)",
+            "Department": "IT",
+            "Role": "Key-User",
+            "Category": 3,
+            "CountAll": 0,
+            "CountA1": 0,
+            "CountA3": 0
+        },
+        "219721_IT_Key-User_4": {
+            "SurveyID": "219721",
+            "Survey_Name": "Survey 2 (February 2023)",
+            "Department": "IT",
+            "Role": "Key-User",
+            "Category": 4,
+            "CountAll": 0,
+            "CountA1": 0,
+            "CountA3": 0
+        },
+        "219721_IT_Key-User_5": {
+            "SurveyID": "219721",
+            "Survey_Name": "Survey 2 (February 2023)",
+            "Department": "IT",
+            "Role": "Key-User",
+            "Category": 5,
+            "CountAll": 0,
+            "CountA1": 0,
+            "CountA3": 0
+        },
+        "219721_IT_User_1": {
+            "SurveyID": "219721",
+            "Survey_Name": "Survey 2 (February 2023)",
+            "Department": "IT",
+            "Role": "User",
+            "Category": 1,
+            "CountAll": 0,
+            "CountA1": 0,
+            "CountA3": 0
+        },
+        "219721_IT_User_2": {
+            "SurveyID": "219721",
+            "Survey_Name": "Survey 2 (February 2023)",
+            "Department": "IT",
+            "Role": "User",
+            "Category": 2,
+            "CountAll": 0,
+            "CountA1": 0,
+            "CountA3": 0
+        },
+        "219721_IT_User_3": {
+            "SurveyID": "219721",
+            "Survey_Name": "Survey 2 (February 2023)",
+            "Department": "IT",
+            "Role": "User",
+            "Category": 3,
+            "CountAll": 0,
+            "CountA1": 0,
+            "CountA3": 0
+        },
+        "219721_IT_User_4": {
+            "SurveyID": "219721",
+            "Survey_Name": "Survey 2 (February 2023)",
+            "Department": "IT",
+            "Role": "User",
+            "Category": 4,
+            "CountAll": 0,
+            "CountA1": 0,
+            "CountA3": 0
+        },
+        "219721_IT_User_5": {
+            "SurveyID": "219721",
+            "Survey_Name": "Survey 2 (February 2023)",
+            "Department": "IT",
+            "Role": "User",
+            "Category": 5,
+            "CountAll": 0,
+            "CountA1": 0,
+            "CountA3": 0
+        },
+        "219721_IT_Change-Manager_1": {
+            "SurveyID": "219721",
+            "Survey_Name": "Survey 2 (February 2023)",
+            "Department": "IT",
+            "Role": "Change-Manager",
+            "Category": 1,
+            "CountAll": 0,
+            "CountA1": 0,
+            "CountA3": 0
+        },
+        "219721_IT_Change-Manager_2": {
+            "SurveyID": "219721",
+            "Survey_Name": "Survey 2 (February 2023)",
+            "Department": "IT",
+            "Role": "Change-Manager",
+            "Category": 2,
+            "CountAll": 1,
+            "CountA1": 1,
+            "CountA3": 0
+        },
+        "219721_IT_Change-Manager_3": {
+            "SurveyID": "219721",
+            "Survey_Name": "Survey 2 (February 2023)",
+            "Department": "IT",
+            "Role": "Change-Manager",
+            "Category": 3,
+            "CountAll": 4,
+            "CountA1": 2,
+            "CountA3": 2
+        },
+        "219721_IT_Change-Manager_4": {
+            "SurveyID": "219721",
+            "Survey_Name": "Survey 2 (February 2023)",
+            "Department": "IT",
+            "Role": "Change-Manager",
+            "Category": 4,
+            "CountAll": 8,
+            "CountA1": 3,
+            "CountA3": 5
+        },
+        "219721_IT_Change-Manager_5": {
+            "SurveyID": "219721",
+            "Survey_Name": "Survey 2 (February 2023)",
+            "Department": "IT",
+            "Role": "Change-Manager",
+            "Category": 5,
+            "CountAll": 10,
+            "CountA1": 5,
+            "CountA3": 5
+        },
+        "219721_IT_Regul\u00e4rer Nutzer_1": {
+            "SurveyID": "219721",
+            "Survey_Name": "Survey 2 (February 2023)",
+            "Department": "IT",
+            "Role": "Regul\u00e4rer Nutzer",
+            "Category": 1,
+            "CountAll": 0,
+            "CountA1": 0,
+            "CountA3": 0
+        },
+        "219721_IT_Regul\u00e4rer Nutzer_2": {
+            "SurveyID": "219721",
+            "Survey_Name": "Survey 2 (February 2023)",
+            "Department": "IT",
+            "Role": "Regul\u00e4rer Nutzer",
+            "Category": 2,
+            "CountAll": 0,
+            "CountA1": 0,
+            "CountA3": 0
+        },
+        "219721_IT_Regul\u00e4rer Nutzer_3": {
+            "SurveyID": "219721",
+            "Survey_Name": "Survey 2 (February 2023)",
+            "Department": "IT",
+            "Role": "Regul\u00e4rer Nutzer",
+            "Category": 3,
+            "CountAll": 0,
+            "CountA1": 0,
+            "CountA3": 0
+        },
+        "219721_IT_Regul\u00e4rer Nutzer_4": {
+            "SurveyID": "219721",
+            "Survey_Name": "Survey 2 (February 2023)",
+            "Department": "IT",
+            "Role": "Regul\u00e4rer Nutzer",
+            "Category": 4,
+            "CountAll": 6,
+            "CountA1": 2,
+            "CountA3": 3
+        },
+        "219721_IT_Regul\u00e4rer Nutzer_5": {
+            "SurveyID": "219721",
+            "Survey_Name": "Survey 2 (February 2023)",
+            "Department": "IT",
+            "Role": "Regul\u00e4rer Nutzer",
+            "Category": 5,
+            "CountAll": 10,
+            "CountA1": 5,
+            "CountA3": 5
+        },
         "219721_Zentrallogistik_Key-User_1": {
             "SurveyID": "219721",
             "Survey_Name": "Survey 2 (February 2023)",
@@ -1587,9 +1787,9 @@
             "Department": "Zentrallogistik",
             "Role": "User",
             "Category": 2,
-            "CountAll": 0,
-            "CountA1": 0,
-            "CountA3": 0
+            "CountAll": 2,
+            "CountA1": 1,
+            "CountA3": 1
         },
         "219721_Zentrallogistik_User_3": {
             "SurveyID": "219721",
@@ -1597,9 +1797,9 @@
             "Department": "Zentrallogistik",
             "Role": "User",
             "Category": 3,
-            "CountAll": 0,
-            "CountA1": 0,
-            "CountA3": 0
+            "CountAll": 5,
+            "CountA1": 2,
+            "CountA3": 3
         },
         "219721_Zentrallogistik_User_4": {
             "SurveyID": "219721",
@@ -1607,9 +1807,9 @@
             "Department": "Zentrallogistik",
             "Role": "User",
             "Category": 4,
-            "CountAll": 0,
-            "CountA1": 0,
-            "CountA3": 0
+            "CountAll": 11,
+            "CountA1": 5,
+            "CountA3": 5
         },
         "219721_Zentrallogistik_User_5": {
             "SurveyID": "219721",
@@ -1617,9 +1817,9 @@
             "Department": "Zentrallogistik",
             "Role": "User",
             "Category": 5,
-            "CountAll": 0,
-            "CountA1": 0,
-            "CountA3": 0
+            "CountAll": 10,
+            "CountA1": 5,
+            "CountA3": 5
         },
         "219721_Zentrallogistik_Change-Manager_1": {
             "SurveyID": "219721",
@@ -1920,206 +2120,6 @@
             "CountAll": 0,
             "CountA1": 0,
             "CountA3": 0
-        },
-        "219721_IT_Key-User_1": {
-            "SurveyID": "219721",
-            "Survey_Name": "Survey 2 (February 2023)",
-            "Department": "IT",
-            "Role": "Key-User",
-            "Category": 1,
-            "CountAll": 0,
-            "CountA1": 0,
-            "CountA3": 0
-        },
-        "219721_IT_Key-User_2": {
-            "SurveyID": "219721",
-            "Survey_Name": "Survey 2 (February 2023)",
-            "Department": "IT",
-            "Role": "Key-User",
-            "Category": 2,
-            "CountAll": 0,
-            "CountA1": 0,
-            "CountA3": 0
-        },
-        "219721_IT_Key-User_3": {
-            "SurveyID": "219721",
-            "Survey_Name": "Survey 2 (February 2023)",
-            "Department": "IT",
-            "Role": "Key-User",
-            "Category": 3,
-            "CountAll": 0,
-            "CountA1": 0,
-            "CountA3": 0
-        },
-        "219721_IT_Key-User_4": {
-            "SurveyID": "219721",
-            "Survey_Name": "Survey 2 (February 2023)",
-            "Department": "IT",
-            "Role": "Key-User",
-            "Category": 4,
-            "CountAll": 0,
-            "CountA1": 0,
-            "CountA3": 0
-        },
-        "219721_IT_Key-User_5": {
-            "SurveyID": "219721",
-            "Survey_Name": "Survey 2 (February 2023)",
-            "Department": "IT",
-            "Role": "Key-User",
-            "Category": 5,
-            "CountAll": 0,
-            "CountA1": 0,
-            "CountA3": 0
-        },
-        "219721_IT_User_1": {
-            "SurveyID": "219721",
-            "Survey_Name": "Survey 2 (February 2023)",
-            "Department": "IT",
-            "Role": "User",
-            "Category": 1,
-            "CountAll": 0,
-            "CountA1": 0,
-            "CountA3": 0
-        },
-        "219721_IT_User_2": {
-            "SurveyID": "219721",
-            "Survey_Name": "Survey 2 (February 2023)",
-            "Department": "IT",
-            "Role": "User",
-            "Category": 2,
-            "CountAll": 0,
-            "CountA1": 0,
-            "CountA3": 0
-        },
-        "219721_IT_User_3": {
-            "SurveyID": "219721",
-            "Survey_Name": "Survey 2 (February 2023)",
-            "Department": "IT",
-            "Role": "User",
-            "Category": 3,
-            "CountAll": 0,
-            "CountA1": 0,
-            "CountA3": 0
-        },
-        "219721_IT_User_4": {
-            "SurveyID": "219721",
-            "Survey_Name": "Survey 2 (February 2023)",
-            "Department": "IT",
-            "Role": "User",
-            "Category": 4,
-            "CountAll": 0,
-            "CountA1": 0,
-            "CountA3": 0
-        },
-        "219721_IT_User_5": {
-            "SurveyID": "219721",
-            "Survey_Name": "Survey 2 (February 2023)",
-            "Department": "IT",
-            "Role": "User",
-            "Category": 5,
-            "CountAll": 0,
-            "CountA1": 0,
-            "CountA3": 0
-        },
-        "219721_IT_Change-Manager_1": {
-            "SurveyID": "219721",
-            "Survey_Name": "Survey 2 (February 2023)",
-            "Department": "IT",
-            "Role": "Change-Manager",
-            "Category": 1,
-            "CountAll": 0,
-            "CountA1": 0,
-            "CountA3": 0
-        },
-        "219721_IT_Change-Manager_2": {
-            "SurveyID": "219721",
-            "Survey_Name": "Survey 2 (February 2023)",
-            "Department": "IT",
-            "Role": "Change-Manager",
-            "Category": 2,
-            "CountAll": 1,
-            "CountA1": 1,
-            "CountA3": 0
-        },
-        "219721_IT_Change-Manager_3": {
-            "SurveyID": "219721",
-            "Survey_Name": "Survey 2 (February 2023)",
-            "Department": "IT",
-            "Role": "Change-Manager",
-            "Category": 3,
-            "CountAll": 4,
-            "CountA1": 2,
-            "CountA3": 2
-        },
-        "219721_IT_Change-Manager_4": {
-            "SurveyID": "219721",
-            "Survey_Name": "Survey 2 (February 2023)",
-            "Department": "IT",
-            "Role": "Change-Manager",
-            "Category": 4,
-            "CountAll": 8,
-            "CountA1": 3,
-            "CountA3": 5
-        },
-        "219721_IT_Change-Manager_5": {
-            "SurveyID": "219721",
-            "Survey_Name": "Survey 2 (February 2023)",
-            "Department": "IT",
-            "Role": "Change-Manager",
-            "Category": 5,
-            "CountAll": 10,
-            "CountA1": 5,
-            "CountA3": 5
-        },
-        "219721_IT_Regul\u00e4rer Nutzer_1": {
-            "SurveyID": "219721",
-            "Survey_Name": "Survey 2 (February 2023)",
-            "Department": "IT",
-            "Role": "Regul\u00e4rer Nutzer",
-            "Category": 1,
-            "CountAll": 0,
-            "CountA1": 0,
-            "CountA3": 0
-        },
-        "219721_IT_Regul\u00e4rer Nutzer_2": {
-            "SurveyID": "219721",
-            "Survey_Name": "Survey 2 (February 2023)",
-            "Department": "IT",
-            "Role": "Regul\u00e4rer Nutzer",
-            "Category": 2,
-            "CountAll": 0,
-            "CountA1": 0,
-            "CountA3": 0
-        },
-        "219721_IT_Regul\u00e4rer Nutzer_3": {
-            "SurveyID": "219721",
-            "Survey_Name": "Survey 2 (February 2023)",
-            "Department": "IT",
-            "Role": "Regul\u00e4rer Nutzer",
-            "Category": 3,
-            "CountAll": 0,
-            "CountA1": 0,
-            "CountA3": 0
-        },
-        "219721_IT_Regul\u00e4rer Nutzer_4": {
-            "SurveyID": "219721",
-            "Survey_Name": "Survey 2 (February 2023)",
-            "Department": "IT",
-            "Role": "Regul\u00e4rer Nutzer",
-            "Category": 4,
-            "CountAll": 6,
-            "CountA1": 2,
-            "CountA3": 3
-        },
-        "219721_IT_Regul\u00e4rer Nutzer_5": {
-            "SurveyID": "219721",
-            "Survey_Name": "Survey 2 (February 2023)",
-            "Department": "IT",
-            "Role": "Regul\u00e4rer Nutzer",
-            "Category": 5,
-            "CountAll": 10,
-            "CountA1": 5,
-            "CountA3": 5
         },
         "219721_Einkauf_Key-User_1": {
             "SurveyID": "219721",

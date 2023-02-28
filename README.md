@@ -123,7 +123,8 @@ Backend
 <li>Die Datenmodellierung und Datenbankoperationen werden über Sequelize realisiert</li>
 <li>Die Sequelize Entity-Models und ihre Relationen wurden in src/models/ definiert</li>
 <li>Soll eine Datenbankoperation durchgeführt werden, werden enstprechende Methoden der Sequelize-Models ausgeführt (z. B. erstellt die Methode MitarbeiterModel.create(mitarbeiterData) einen Mitarbeiter in der mariadb-Datenbank)</li>
-<li>Die Struktur der Daten wird durch folgendes ERM illustriert:</li>  
+<li>Die Struktur der Daten wird durch folgendes ERM illustriert:</li>
+</br >
 
 ![alt text](documentation/readme/database_erm.png) "ERM-Datenmodell"
 
