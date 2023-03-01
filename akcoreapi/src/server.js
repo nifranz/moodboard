@@ -60,7 +60,6 @@ app.get("/organisations", async (req, res) => {
  * @param {object} req - The HTTP request object.
  * @param {object} res - The HTTP response object.
  * @returns {Promise<void>} - The Promise object representing the completion of the function.
- * @throws {Error} - An error occurred while handling the request.
  */
 app.post("/verifyLogin", async (req, res) => {
     console.log("POST /verifyLogin", req.body);
@@ -109,7 +108,7 @@ app.post("/verifyLogin", async (req, res) => {
     }
 });
 
-app.get("/inviteParticipants", async(req, res) => {
+app.get("/utils/ls/emailtrigger", async(req, res) => {
     let client = new LRPC();
     await client.openConnection();
     let today = getToday();
@@ -131,7 +130,7 @@ app.get("/inviteParticipants", async(req, res) => {
 
 });
 
-app.get("/injectDataAll", async (req, res) => {
+app.get("/utils/es/datainject", async (req, res) => {
     console.log("GET /injectDataAll")
 
     // request for all projekte

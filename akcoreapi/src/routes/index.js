@@ -13,6 +13,6 @@ const abteilungRouter = require('./abteilung');
 router.use('/mitarbeiter', mitarbeiterRouter);
 router.use('/projekt', projektRouter);
 router.use('/abteilung', abteilungRouter);
-router.use('/auth', authRouter);
+// router.use('/auth', authRouter);
 
 module.exports = router;
