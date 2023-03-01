@@ -89,7 +89,7 @@ class LRPC {
         }
     }
     /** 
-     * Requests all surveys from the LRPC and prints the response to the console.
+     * Requests all surveys from Limesurvey and returns them
      * */
     async listSurveys() {
         try {
