@@ -107,7 +107,7 @@ class LRPC {
 
     /** 
      * Requests all users from the LRPC and prints the response to the console.
-     * */
+     */
     async listUsers() {
         try {
             if (!this.#activeConnection) {
@@ -121,12 +121,6 @@ class LRPC {
         }        
     }
 
-    /** 
-     * Requests all surveys from the LRPC and prints the response to the console.
-     * @param startDate The startDate of the survey
-     * @param stopDate The stopDate of the survey
-     * @returns {Promise} Promise object, represents the surveyId of the created survey
-     */
     async createSurvey(surveyFilePath) {
         return new Promise(async (resolve, reject)  => {
             try {

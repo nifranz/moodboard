@@ -8,6 +8,7 @@ import ProjektView from "@/views/ProjektView"
 import EditProjektView from "@/views/EditProjektView"
 import ProjektDashboardView from "@/views/ProjektDashboardView"
 import LoginView from "@/views/LoginView.vue"
+import DocumentationView from "@/views/DocumentationView"
 
 
 const routes = [
@@ -63,6 +64,11 @@ const routes = [
     path: '/login',
     name: 'LoginView.vue',
     component: LoginView,
+  },
+  {
+    path: '/docs',
+    name: 'DocumentationView',
+    component: DocumentationView,
   }
 ]
 

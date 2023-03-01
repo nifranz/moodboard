@@ -23,6 +23,7 @@ const Abteilung = require('./models/abteilung')
 const Mitarbeiter = require('./models/mitarbeiter')
 const Projekt = require('./models/projekt')
 const Umfrage = require('./models/umfrage')
+const { Console } = require('console')
 require('./models/associations')
 
 
@@ -115,8 +116,11 @@ app.get("/utils/ls/emailtrigger", async(req, res) => {
     let umfragen = await Umfrage.findAll({
         include: {model:Mitarbeiter}
     });
-    for (umfr of umfragen) {       
+    for (umfr of umfragen) {
+        console.log(`Umfrage start: ${umfr.umfrageStartDate} - end: ${umfr.umfrageEndDate}`);
+        console.log(`today: ${today}`)
         if (umfr.umfrageStartDate <= today && umfr.umfrageEndDate >= today) {
+            console.log("umfrage aktiv; inviting ... ")
             let participantTokens = [];
             for (ma of umfr.mitarbeiters) {
                 participantTokens.push(ma.fuelltAus.mitarbeiterLimesurveyTokenId);
@@ -127,7 +131,7 @@ app.get("/utils/ls/emailtrigger", async(req, res) => {
             await client.mailRegisteredParticipants(umfr.umfrageLimesurveyId);
         }
     }
-
+    return res.sendStatus(HTTP.OK);
 });
 
 app.get("/utils/es/datainject", async (req, res) => {
@@ -186,11 +190,13 @@ app.get("/utils/es/datainject", async (req, res) => {
                             console.log("Error while invoking python script!");
                             console.log('error:', error.message);
                             reject();
+                            return;
                         }
                         if (stderr) {            
                             console.log("Error while executing python script!");
                             console.log('stderr:', stderr);
                             reject();
+                            return;
                         }
                         let pipeResultsFilePath = stdout.split('§')[0];
                         let returnData = "";
@@ -201,15 +207,20 @@ app.get("/utils/es/datainject", async (req, res) => {
                         resolve(returnData);
                     });
                 }).catch(() => {
+                    console.log("catched");
                     return null;
                 }).then(async (data) => {
                     return data;
                 }).finally(async () => {
                     // deleting the file after data was imported
                     await fs.unlink(filePath);
-                });               
+                });
+                        
         
-                if (data === null) return res.sendStatus(HTTP.INTERNAL_ERROR);
+                if (data === null) {
+                    console.log("⎢⎣ Injection for umfrage unsuccessfull")
+                    continue;
+                }
         
                 projektId = data.projektId;
                 let pie = data.pie;
@@ -250,7 +261,7 @@ app.get("/utils/es/datainject", async (req, res) => {
                 console.log("⎢⎢ => done!")
                 console.log(`⎢⎣ \u2713 data injection to elasticsearch for umfrage (id:${umfr.umfrageId}, start: ${umfr.umfrageStartDate} - end: ${umfr.umfrageEndDate}) completed!`)
             }
-            console.log(`⎣ ✓ Injection complete.
+            console.log(`⎣ ✓ Projekt injection complete.
             `);
         }
     } catch(error) {

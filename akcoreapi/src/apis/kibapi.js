@@ -21,7 +21,6 @@ class KIBAPI {
      * @function deleteKibanaSpace
      * @param {string} projektId - The ID of the project/space to be deleted.
      * @returns {string|null} The ID of the deleted space, or null if an error occurred.
-     * @throws {Error} If an error occurred while deleting the space.
      */
     async deleteKibanaSpace(projektId) {
         await axios.request({

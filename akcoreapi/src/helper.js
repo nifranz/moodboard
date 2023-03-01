@@ -132,8 +132,12 @@ function getToday() {
     if (month < 10) {
         month = "0" + month;
     }
+    let day = d.getDate();
+    if (day < 10) {
+        day = "0" + day;
+    }
     // Return the current date as a string in the format 'YYYY-MM-DD'.
-    return '' + `${d.getFullYear()}-${month}-${d.getDate()}`
+    return '' + `${d.getFullYear()}-${month}-${day}`
 }
 /**
  * Returns the previous day's date in the format 'YYYY-MM-DD'.
