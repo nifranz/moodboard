@@ -4,7 +4,7 @@ const express = require('express');
 const router = express.Router();
 const MitarbeiterController = require('../controllers/mitarbeiter');
 
-// Define endpoint handlers
+// Define endpoint handlers for Mitarbeiter CRUD
 router.get('/', MitarbeiterController.list);
 router.post('/', MitarbeiterController.create);
 router.get('/:mitarbeiterId', MitarbeiterController.read);

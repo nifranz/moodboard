@@ -9,7 +9,7 @@ const projektRouter = require('./projekt');
 const abteilungRouter = require('./abteilung');
 // const authRouter = require('./auth');
 
-// Mount route modules onto the router
+// Mount route modules onto the router to be imported in server.js
 router.use('/mitarbeiter', mitarbeiterRouter);
 router.use('/projekt', projektRouter);
 router.use('/abteilung', abteilungRouter);

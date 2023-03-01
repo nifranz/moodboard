@@ -1,45 +1,39 @@
-const connection = require('./connection')
-const replace = require('replace-in-file')
-const { Client } = require('@elastic/elasticsearch')
-const { Console } = require('console')
-const { Sequelize, DataTypes } = require('sequelize')
-const fssync = require('fs')
-const axios = require('axios')
-
+// express.js
 const express = require('express')
 const routes = require('./routes') 
 const { HTTP } = require('./helper')
 
+// utils
 const fs = require('fs/promises')
 const cors = require('cors')
 const { exec } = require('child_process')
 const uuid = require('uuid')
 const bodyParser = require('body-parser')
+const { getToday, getYesterday, handleError } = require('./helper')
 
+// api classes
 const { ESAPI } = require(__dirname+'/apis/esapi.js')
 const { LRPC } = require(__dirname+'/apis/lrpc.js')
 const { KIBAPI } = require(__dirname+"/apis/kibapi.js")
 
-// const { Organisation, Abteilung } = require('./models/datamodels') 
+// sequelize database and datamodel definitions
 const akcoredb = require('./database')
 const Organisation = require('./models/organisation')
-const Projekt = require('./models/projekt')
-const Mitarbeiter = require('./models/mitarbeiter')
-const Umfrage = require('./models/umfrage')
 const Abteilung = require('./models/abteilung')
+const Mitarbeiter = require('./models/mitarbeiter')
+const Projekt = require('./models/projekt')
+const Umfrage = require('./models/umfrage')
 require('./models/associations')
 
-const { getToday, getYesterday, SurveyFile, handleError } = require('./helper')
 
 // creating and configuring expressjs server 
 const PORT = 3001;
-
 let app = express();
-
 app.use(cors());
 app.use(bodyParser.json());
 app.use("/", routes) // REST API CRUD Endpoints for all DataModels (see routes/index.js)
 
+// defining additional data endpoints
 /** 
  * API ENDPOINTS FOR ORGANISATIONS
  */

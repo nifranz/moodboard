@@ -138,26 +138,33 @@ In a production environment, the node app is run as a daemon (system service) on
 <li>Der Server bietet mehrere API-Endpoints an, um Backend-Funktionalitäten bereitzustellen</li>
 <li>Einige dieser Endpoints sind über die express.js router-Funktionalität eingebunden, andere werden direkt (z.b mit app.get()) definiert</li>
 <li>Die routes wurden in src/routes/ definiert und im router der app in server.js-file eingebunden.</li>
-<li>Routes leiten die Anfrage an die Controller weiter, welche dann die Durchführung der angefragten Funktionen steuern</li>
-<li>Die CRUD-Operationen der Controller werden durch folgende HTTP Request Methoden erreicht.</li>
+<li>Routes leiten eine eingehende Anfrage an die Controller weiter, welche dann die Durchführung der angefragten Funktionen steuern</li>
+<li>Die CRUD-Operationen der Controller werden durch folgende HTTP API-Endpoints nach dem REST-Schema angestoßen:</li>
 </ul>
 
-| CRUD                                | HTTP                     |
+| CRUD Funktion       | API-Endpoint   |
 | ----------------------------------- | ------------------------ |
 | <code>ModelController.list()</code> | <code>GET /model/</code> |
-| <code>ModelController.read()</code> | <code>GET /model/:id</code> |
 | <code>ModelController.create()</code> | <code>POST /model/</code> |
+| <code>ModelController.read()</code> | <code>GET /model/:id</code> |
 | <code>ModelController.update()</code> | <code>PUT /model/:id</code> |
-| <code>ModelController.delete()</code> | <code>DELETE /model/</code> |
+| <code>ModelController.delete()</code> | <code>DELETE /model/:id</code> |
 
+<ul>
+<li>Ein Beispiel: Es soll eine Abteilung gelöscht werden. Die CRUD Operationen für Abteilungen werden durch den ModelController <code>AbteilungController</code> gesteuert, weshalb die Abteilung durch den Aufruf der Funktion <code>AbteilungController.delete()</code> gelöscht werden kann. Um dies durch einen API-Aufruf durchzuführen, muss mit einem HTTP-DELETE-Request die URL <code>/abteilung/abteilungId</code> mit der enstprechenden abteilungId der zu löschenden Abteilung aufgerufen werden.</li>
+<li>Erwartet ein Controller Daten für die Operation (beim Erstellen einer Abteilung zum Beispiel einen Abteilungsnamen), werden diese vom Router, der den HTTP-Request entgegen nimmt, durch den Request-Body oder den Request-Query-String an den Controller übergeben </li>
+<li>Nicht alle ModelController modellieren alle CRUD-Operationen auf den DataModels, daher sind die dazugehörigen API-Endpoints der nicht realisierten CRUD-Operationen enstprechend nicht über das HTTP-Protokoll erreichbar</li>
+<li>Welche Routes und Operationen implementiert sind, ergibt sich aus dem dokumentierten Code der Routes und Controller in <code>src/routes/</code> und <code>src/controller/</code>
 
+</ul>
 
 #### 1.2.2 Controller
 <ul>
-<li>Die Funktionalitäten der API-Endpoints werden durch Controller gesteuert, welche in src/controller/ definiert sind</li>
-<li>Für jedes Data-Model (und damit alle Datenbankoperationen) existiert ein Controller</li>
+<li>Wie oben erwähnt, werden die Funktionalitäten des Backends durch Controller gesteuert, welche in <code>src/controller/</code> definiert sind</li>
+<li>Für jedes Data-Model (und damit alle implementierten Datenbankoperationen) existiert ein Controller</li>
 <li>Zur Zeit existieren nur für Datenbankoperationen Controller, alle anderen Funktionalitäten werden noch in der server.js-file gesteuert und umgesetzt</li>
 <li>Zur Zeit findet die Durchführung der Business-Logic (wie zum Beispiel das Erstellen eines Projekts) ebenfalls im Controller statt. In Zukunft können und sollte die Business-Logic von den Controllern in express-helper-services und -middlewares ausgelagert werden</li>
+<li>Die Funktionen der Controller werden unter dem Punkt 2.1 genauer beschrieben</li>
 </ul>
 
 #### 1.2.3 Datenbank und Sequelize Object-Relational-Mapper (ORM)
