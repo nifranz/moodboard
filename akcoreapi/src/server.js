@@ -79,6 +79,7 @@ app.post("/verifyLogin", async (req, res) => {
 
             {type: "adm", accountName: "awolf", passwort: "lswi_test", organisationId: 2},
 
+
         ]
 
         let data = req.body; // get data from request body

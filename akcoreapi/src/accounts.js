@@ -11,4 +11,5 @@ module.exports = { ACCOUNTS: [
 
     {type: "adm", accountName: "awolf", passwort: "lswi_test", organisationId: 2},
 
+
 ] }
