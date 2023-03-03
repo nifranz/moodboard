@@ -202,7 +202,7 @@ Abteilungen können aufgelistet, erstellt und gelöscht werden
 <code>Abteilung.delete()</code> - <em>Löschen</em>
 <ul>
 <li>Durch die Funktion <code>Abteilung.delete()</code> kann ein Abteilung aus der Datenbank gelöscht werden</li>
-<li>Wird eine Abteilung angefragt, die Mitarbeiter enthält, wird die Abteilung nicht gelöscht</li>
+<li>Wird das Löschen einer Abteilung angefragt, welche Mitarbeiter enthält, wird die Abteilung nicht gelöscht</li>
 </ul>
 
 #### 2.1.1 Mitarbeiter
