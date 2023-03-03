@@ -199,9 +199,9 @@ Abteilungen können aufgelistet, erstellt und gelöscht werden
 <li><strike>Sollte bereits eine Abteilung mit dem Namen für die aktuelle Organisation existieren, wird die Abteilung nicht erstellt</strike></br><strong style="color: #ED4F32;">Achtung!</strong> Noch nicht umgesetzt!</li>
 </ul>
 
-<code>Mitarbeiter.delete()</code> - <em>Löschen</em>
+<code>Abteilung.delete()</code> - <em>Löschen</em>
 <ul>
-<li>Durch die Funktion <code>Mitarbeiter.delete()</code> kann ein Abteilung aus der Datenbank gelöscht werden</li>
+<li>Durch die Funktion <code>Abteilung.delete()</code> kann ein Abteilung aus der Datenbank gelöscht werden</li>
 <li>Wird eine Abteilung angefragt, die Mitarbeiter enthält, wird die Abteilung nicht gelöscht</li>
 </ul>
 
