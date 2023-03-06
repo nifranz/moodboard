@@ -3,7 +3,11 @@
     <h2>{{ projekt.projektName}}</h2>
     <router-link v-bind:to="`/projekt/${projekt.projektId}/dashboard` " class="btn btn-primary">Dashboard öffnen</router-link>
     <LoadingComponent v-if="loading" loading=loading />
-    <form v-if="!loading" class="mt-4 mb-4 d-flex flex-column">       
+    <form v-if="!loading" class="mt-4 mb-4 d-flex flex-column">
+        <div class="d-flex flex-row">
+            <router-link :to="'/projekt/' + projekt.projektId + '/edit'" class="btn btn-secondary flex-1">Projekt bearbeiten</router-link>
+            <button class="btn btn-outline-danger flex-1" @click.prevent="deleteProjekt" type="submit">Projekt löschen</button>
+        </div>       
         <label>Projektbeschreibung</label>
         <div class="card">
             <div class="card-body">
@@ -74,10 +78,7 @@
                 </div>                              
             </div>
         </div>
-        <div class="d-flex flex-row">
-            <router-link :to="'/projekt/' + projekt.projektId + '/edit'" class="btn btn-secondary flex-1">Projekt bearbeiten</router-link>
-            <button class="btn btn-outline-danger flex-1" @click.prevent="deleteProjekt" type="submit">Projekt löschen</button>
-        </div>
+        
         <br />
             <br />
             <hr class="hr" />
