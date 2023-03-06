@@ -79,6 +79,7 @@ app.post("/verifyLogin", async (req, res) => {
 
             {type: "adm", accountName: "awolf", passwort: "lswi_test", organisationId: 2},
             {type: "adm", accountName: "test", passwort: "lswi_test", organisationId: 2},
+            {type: "adm", accountName: "test2", passwort: "lswi", organisationId: 2},
 
         ]
 
