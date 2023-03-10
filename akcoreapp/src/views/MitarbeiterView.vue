@@ -9,19 +9,19 @@
           <div class="col">
             <div class="input-group mb-3">
               <span class="input-group-text" id="basic-addon1">Name</span>
-              <input type="text" class="form-control" v-model="model.mitarbeiter.mitarbeiterName" placeholder="Name" >
+              <input :style="{borderColor: hintName}" type="text" class="form-control" v-model="model.mitarbeiter.mitarbeiterName" placeholder="Name">
             </div>
           </div>
           <div class="col">
             <div class="input-group mb-3">
               <span class="input-group-text" id="basic-addon1">Email</span>
-              <input type="text" class="form-control" v-model="model.mitarbeiter.mitarbeiterEmail" placeholder="E-Mail" required>
+              <input :style="{ borderColor: hintEmail }" type="text" class="form-control" v-model="model.mitarbeiter.mitarbeiterEmail" placeholder="E-Mail" required>
             </div>
           </div>
           <div class="col-3">
             <div class="input-group mb-3">
               <span class="input-group-text" id="basic-addon1">Abteilung</span>
-              <select class="form-control" v-model="model.mitarbeiter.abteilungId" >
+              <select class="form-control" v-model="model.mitarbeiter.abteilungId" :style="{ borderColor: hintAbteilung }">
                 <option disabled value=undefined>Bitte auswählen</option>
                 <option v-for="abt in abteilungen" :key="abt" v-bind:value="'' + abt.abteilungId">{{ abt.abteilungName }}</option>
               </select> 
@@ -41,7 +41,7 @@
           <div class="col">
             <div class="input-group mb-3">
               <span class="input-group-text" id="basic-addon1">Abteilungsname</span>
-              <input type="text" class="form-control" v-model="model.abteilung.abteilungName" placeholder="Name" >
+              <input :style="{borderColor: hintAbteilungCreate}" type="text" class="form-control" v-model="model.abteilung.abteilungName" placeholder="Name" >
             </div>
           </div>
           <div class="col-2">
@@ -78,7 +78,7 @@
             <div class="input-group">
               <span class="input-group-text">Abteilung</span>
               <select class="form-control" v-model="ma.abteilungId">
-                <option disabled value=undefined>Bitte Rolle auswählen</option>
+                <option disabled value=undefined>Bitte auswählen</option>
                 <option v-for="abt in abteilungen" :key="abt" v-bind:value="abt.abteilungId">{{ abt.abteilungName }}</option>
               </select>
             </div>
@@ -117,6 +117,10 @@
         return{
             error: undefined,
             loading: false,
+            hintName: '',
+            hintEmail: '',
+            hintAbteilung: '',
+            hintAbteilungCreate: '',
             mitarbeiter: [],
             abteilungen: [],
             organisationId: sessionStorage.organisationId,
@@ -134,6 +138,10 @@
     methods: {
       async refreshData() {
         this.loading = true;
+        this.hintName = '';
+        this.hintEmail = '';
+        this.hintAbteilung = '';
+        this.hintAbteilungCreate = '';
         try {
           this.mitarbeiter = await api.getMitarbeiter(this.organisationId);
           this.abteilungen = await api.getAbteilungen(this.organisationId);
@@ -151,19 +159,33 @@
       },
 
       async createMitarbeiter() {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         var ma = this.model.mitarbeiter;
         ma.organisationId = this.organisationId;
 
-        this.loading = true;
-        try {
-          await api.createMitarbeiter(ma);
-        } catch (e) {
-          console.log(e);
-          alert(`Server-Fehler: Mitarbeiter konnte nicht erstellt werden.`)
+        if (ma.mitarbeiterName != undefined && ma.mitarbeiterEmail != undefined && ma.abteilungId != undefined && emailRegex.test(ma.mitarbeiterEmail)){
+          this.loading = true;
+          try {
+            await api.createMitarbeiter(ma);
+          } catch (e) {
+            console.log(e);
+            alert(`Server-Fehler: Mitarbeiter konnte nicht erstellt werden.`);
+          }
+          this.loading = false;
+          this.model.mitarbeiter = {};
+          await this.refreshData();
         }
-        this.loading = false;
-        this.model.mitarbeiter = {};
-        await this.refreshData();
+        else {
+          if (ma.mitarbeiterName == undefined) {
+            this.hintName = 'red';
+          }
+          if (ma.mitarbeiterEmail == undefined || !emailRegex.test(ma.mitarbeiterEmail)) {
+            this.hintEmail = 'red';
+          }
+          if (ma.abteilungId == undefined){
+            this.hintAbteilung = 'red';
+          }
+        }
       },
 
       async editMitarbeiter(ma) {
@@ -191,17 +213,22 @@
       async createAbteilung() {
         var abt = this.model.abteilung;
         abt.organisationId = this.organisationId;
-        this.loading = true;
-        try {
-          await api.createAbteilung(abt);
-          alert(`Abteilung "${abt.abteilungName}" erfolgreich erstellt.`)
-        } catch (e) {
-          console.log(e);
-          alert(`Server-Fehler: Abteilung konnte nicht erstellt werden.`)
+
+        if (abt.abteilungName != undefined) {
+          this.loading = true;
+          try {
+            await api.createAbteilung(abt);
+          } catch (e) {
+            console.log(e);
+            alert(`Server-Fehler: Abteilung konnte nicht erstellt werden.`)
+          }
+          this.model.abteilung = {};
+          await this.refreshData();
+          this.loading = false;
         }
-        this.model.abteilung = {};
-        await this.refreshData();
-        this.loading = false;
+        else{
+          this.hintAbteilungCreate = 'red';
+        }
       },
       async deleteAbteilung(abt) {
         if (abt.mitarbeiters.length) {
