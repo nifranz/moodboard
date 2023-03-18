@@ -1,7 +1,8 @@
 import axios from 'axios'
 
 const client = axios.create({
-    baseURL: 'http://bolarus.wi.uni-potsdam.de/api/',
+    //baseURL: 'http://bolarus.wi.uni-potsdam.de/api/',
+    baseURL: 'http://localhost:3001/',
     json: true
 });
 
@@ -75,6 +76,7 @@ export default {
         return response.data;
     },
     async verifyLogin(data) {
+        console.log(data);
         let response = await this.execute('post', '/verifyLogin', data);
         return response.data;
     },
@@ -85,6 +87,27 @@ export default {
     async deleteAbteilung(abteilungId) {
         let response = await this.execute('delete', `/abteilung/${abteilungId}`);
         return response.data;
-    }
+    },
+    // USER API
+    async createUser(data) {
+        console.log(data);
+        let response = await this.execute('post', '/user', data);
+        console.log(response);
+        return response.headers.location;
+    },
+    async deleteUser(userId) {
+        let response = await this.execute('delete', `/user/${userId}`);
+        return response.data;
+    },
+    async getUsers(organisationId) {
+        console.log("API: executing getUsers()")
+        let response = await this.execute('get', `/user?organisationId=${organisationId}`);
+        console.log(response)
+        return response.data;
+    },
+    async updateUser(data) {
+        let response = await this.execute('put', '/user/' + data.userId, data);
+        return response.data;
+    },
 }
   

@@ -1,7 +1,7 @@
 <template>
   <nav class="navbar navbar-expand-lg navbar-light bg-light">
     <div class="container-fluid">
-      <span class="navbar-brand">A&K AdminPanel</span>
+      <span class="navbar-brand"><router-link to="/" active-class="active" class="nav-link">A&K AdminPanel</router-link></span>
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
         <span class="navbar-toggler-icon"></span>
       </button>
@@ -13,6 +13,9 @@
           <li class="nav-item">
             <router-link to="/mitarbeiter" active-class="active" class="nav-link">Mitarbeiter</router-link>
           </li>
+          <li class="nav-item">
+              <router-link to="/user" active-class="active" class="nav-link">Zugänge</router-link>
+            </li>
           <!-- <li class="nav-item">
             <router-link to="/nutzer" active-class="active" class="nav-link">Nutzer</router-link>           
           </li> -->
@@ -113,12 +116,12 @@
       async login(){
         this.form.loading = true;
         this.form.fail = false;
-        let data = {accountName: this.form.name, passwort: this.form.passwort}
+        let data = {username: this.form.name, password: this.form.passwort}
         try {
           let response = await api.verifyLogin(data);
-          if (response.accountName) {
+          if (response.username) {
             setTimeout(async () => {                    
-              sessionStorage.setItem("account", response.accountName);
+              sessionStorage.setItem("account", response.username);
               console.log(response)
               this.account = sessionStorage.getItem("account");
               document.cookie = {organisationId: response.organisatonId};

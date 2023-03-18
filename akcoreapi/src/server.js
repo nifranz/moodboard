@@ -20,11 +20,15 @@ const { KIBAPI } = require(__dirname+"/apis/kibapi.js")
 const akcoredb = require('./database')
 const Organisation = require('./models/organisation')
 const Abteilung = require('./models/abteilung')
+const User = require('./models/user')
 const Mitarbeiter = require('./models/mitarbeiter')
 const Projekt = require('./models/projekt')
 const Umfrage = require('./models/umfrage')
 const { Console } = require('console')
 require('./models/associations')
+
+// Controllers
+const UserController = require('./controllers/user')
 
 
 // creating and configuring expressjs server 
@@ -66,41 +70,21 @@ app.post("/verifyLogin", async (req, res) => {
     console.log("POST /verifyLogin", req.body);
 
     try {        
-        const ACCOUNTS = [
-            {type: "suadm", accountName: "dev", passwort: "passwort", organisationId: 1},
-
-            {type: "adm", accountName: "dkotarski", passwort: "lswi_test", organisationId: 2},
-            {type: "adm", accountName: "thammes", passwort: "lswi_test", organisationId: 2},
-
-            {type: "cm", accountName: "bbender", passwort: "lswi_test", organisationId: 2},
-            {type: "cm", accountName: "jgonnermann", passwort: "lswi_test", organisationId: 2},
-            {type: "cm", accountName: "cthim", passwort: "lswi_test", organisationId: 2},
-            {type: "cm", accountName: "ngronau", passwort: "lswi_test", organisationId: 2},
-
-            {type: "adm", accountName: "awolf", passwort: "lswi_test", organisationId: 2},
-
-        ]
-
         let data = req.body; // get data from request body
-        if (!data) return res.sendStatus(HTTP.BAD_REQUEST); // if no body is present send back HTTP error
+        
+        if (!data) {return res.sendStatus(HTTP.BAD_REQUEST);} // if no body is present send back HTTP error
 
-        let account;
-        for (a of ACCOUNTS) { // check if there is an account matching the requested accountName
-            if (a.accountName == data.accountName) account = a;
-        }
+        let usr = await User.findOne({ where: { username: data.username, password: data.password } })
+        console.log("GET user:", usr);
 
-        if (!account) { // if no account is found send back HTTP error
-            console.log("  -> account not found.");
+        if (!usr) { // if no user is found send back HTTP error
+            console.log("  -> user not found.");
             return res.sendStatus(HTTP.NOT_FOUND);
         }
-
-        if (account.passwort == data.passwort) { // if request passwort matches account passwort send back account info
-            console.log("  -> Login sucessfull for account: ", account.accountName);
-            delete account.passwort;
-            return res.status(HTTP.OK).send(account);
-        } else { // if passwort doesnt match account passwort send back http error
-            console.log("  -> Login unsucessfull for account: ", account.accountName);
-            return res.sendStatus(401);
+        else{
+            console.log("  -> Login sucessfull for user: ", usr.username);
+            delete usr.password;
+            return res.status(HTTP.OK).send(usr);
         }
 
     } catch (e) {

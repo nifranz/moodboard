@@ -7,10 +7,12 @@ const router = express.Router();
 const mitarbeiterRouter = require('./mitarbeiter');
 const projektRouter = require('./projekt');
 const abteilungRouter = require('./abteilung');
+const userRouter = require('./user');
 // const authRouter = require('./auth');
 
 // Mount route modules onto the router to be imported in server.js
 router.use('/mitarbeiter', mitarbeiterRouter);
+router.use("/user", userRouter);
 router.use('/projekt', projektRouter);
 router.use('/abteilung', abteilungRouter);
 // router.use('/auth', authRouter);

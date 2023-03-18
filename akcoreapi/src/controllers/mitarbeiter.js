@@ -58,7 +58,7 @@ console.log("CREATE /mitarbeiter/");
         let mitarbeiter = await MitarbeiterModel.create({ 
             mitarbeiterName: data.mitarbeiterName, 
             mitarbeiterEmail: data.mitarbeiterEmail, 
-            abteilungId: data.abteilungId, 
+            abteilungId: data.abteilungId,
             organisationId: data.organisationId
         });
 

@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import MitarbeiterView from "../views/MitarbeiterView"
-import NutzerView from "../views/NutzerView"
+import UserView from "../views/UserView"
 import ProjekteView from "../views/ProjekteView"
 import PageNotFound from "@/views/PageNotFound"
 import CreateProjektView from "@/views/CreateProjektView"
@@ -23,9 +23,9 @@ const routes = [
     redirect: '/projekte'
   },
   {
-    path: '/nutzer',
-    name: 'NutzerView',
-    component: NutzerView
+    path: '/user',
+    name: 'UserView',
+    component: UserView
   },
   {
     path: '/mitarbeiter',

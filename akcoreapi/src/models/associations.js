@@ -6,6 +6,7 @@ const Mitarbeiter = require('./mitarbeiter')
 const Projekt = require('./projekt')
 const Umfrage = require('./umfrage')
 const Abteilung = require('./abteilung')
+const User = require('./user')
 
 /**
  * ProjektTeilnahme model (join table for Projekt and Mitarbeiter) with fields:
@@ -62,3 +63,7 @@ Mitarbeiter.belongsToMany(Projekt, { through: ProjektTeilnahme });
 // Mitarbeiter m :: n Umfrage
 Mitarbeiter.belongsToMany(Umfrage, { through: FuelltAus });
 Umfrage.belongsToMany(Mitarbeiter, { through: FuelltAus });
+
+// Organisation 1 :: n User
+Organisation.hasMany(User, { foreignKey: 'organisationId' });
+User.belongsTo(Organisation, { foreignKey: 'organisationId' });
