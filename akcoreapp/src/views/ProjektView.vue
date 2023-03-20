@@ -145,7 +145,7 @@
                     await api.createProjekt(projekt);
                     this.$router.push('/projekte');
                 } catch (e) {
-                    confirm("Fehler");
+                    alert("Fehler");
                 }
                 
                 this.model= {};

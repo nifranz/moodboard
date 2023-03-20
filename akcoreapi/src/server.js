@@ -80,6 +80,7 @@ app.post("/verifyLogin", async (req, res) => {
             {type: "adm", accountName: "awolf", passwort: "lswi_test", organisationId: 2},
             {type: "adm", accountName: "test", passwort: "lswi_test", organisationId: 2},
             {type: "adm", accountName: "test2", passwort: "lswi", organisationId: 2},
+            {type: "adm", accountName: "test3", passwort: "lswi", organisationId: 2},
 
         ]
 
@@ -89,6 +90,8 @@ app.post("/verifyLogin", async (req, res) => {
         let account;
         for (a of ACCOUNTS) { // check if there is an account matching the requested accountName
             if (a.accountName == data.accountName) account = a;
+                break;
+            
         }
 
         if (!account) { // if no account is found send back HTTP error
