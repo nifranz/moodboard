@@ -40,7 +40,7 @@
                 this.loading = false;        
             },
             reloadIframe() {
-                document.getElementsByClassName('kibana-iframe').contentWindow.location.reload();
+                document.getElementsByClassName('kibana-iframe')[0].contentWindow.location.reload();
             }
         }
     }
