@@ -1,6 +1,8 @@
-import axios from 'axios'
+import axios from 'axios';
+
 
 const client = axios.create({
+    //baseURL: 'http://localhost:3001/',
     baseURL: 'http://bolarus.wi.uni-potsdam.de/api/',
     json: true
 });
