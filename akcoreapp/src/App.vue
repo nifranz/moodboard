@@ -59,7 +59,7 @@
 
                 <!-- Password input -->
                 <div class="form-outline mb-4">
-                    <input type="password" v-model="form.passwort" class="form-control" />
+                    <input type="password" v-model="form.passwort" class="form-control" @keyup.enter="login" />
                     <label class="form-label" >Passwort</label>
                 </div>
 

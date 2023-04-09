@@ -78,6 +78,10 @@ app.post("/verifyLogin", async (req, res) => {
 
             {type: "adm", accountName: "awolf", passwort: "lswi_test", organisationId: 2},
             {type: "adm", accountName: "neuaccount", passwort: "lswi_test2", organisationId: 2},
+            {type: "adm", accountName: "test", passwort: "lswi_test", organisationId: 2},
+            {type: "adm", accountName: "test2", passwort: "lswi", organisationId: 2},
+            {type: "adm", accountName: "test3", passwort: "lswi", organisationId: 2},
+
         ]
 
         let data = req.body; // get data from request body

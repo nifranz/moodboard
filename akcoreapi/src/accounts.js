@@ -14,5 +14,7 @@ module.exports = { ACCOUNTS: [
     {type: "adm", accountName: "nifranz", passwort: "lswi_test", organisationId: 2},
     {type: "adm", accountName: "lzeitz", passwort: "lswi_test", organisationId: 2},
     {type: "adm", accountName: "lkrueger", passwort: "lswi_test", organisationId: 2},
+    {type: "adm", accountName: "test", passwort: "lswi_test", organisationId: 2},
+
 
 ] }

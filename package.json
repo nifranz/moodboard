@@ -1,0 +1,20 @@
+{
+  "dependencies": {
+    "axios": "^1.3.4",
+    "express": "^4.18.2",
+    "mariadb": "^3.1.0",
+    "mysql2": "^3.2.0",
+    "sequelize": "^6.29.1"
+  },
+  "name": "akcore",
+  "description": "<!-- Headers-->\r <div style=\"text-align: center;\"> \r     <div style=\"font-size: 20px; color:#323232; margin-bot:0px;\">A&K-Bachelorprojekt:</div>\r     <div style=\"font-size: 60px; font-weight: bold; color:#323232; margin-top:0px;\">Moodboard-System</div>\r     <div style=\"font-size: 35px;\">Universität Potsdam</div>\r     <div style=\"font-size: 20px;\">Wintersemester 2022/23</div>\r </div>\r </br >\r </br >",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {}
+}
