@@ -9,6 +9,10 @@ module.exports = { ACCOUNTS: [
     {type: "cm", accountName: "cthim", passwort: "lswi_test", organisationId: 2},
     {type: "cm", accountName: "ngronau", passwort: "lswi_test", organisationId: 2},
 
+    {type: "adm", accountName: "mwollnik", passwort: "lswi_test", organisationId: 2},
     {type: "adm", accountName: "awolf", passwort: "lswi_test", organisationId: 2},
+    {type: "adm", accountName: "nifranz", passwort: "lswi_test", organisationId: 2},
+    {type: "adm", accountName: "lzeitz", passwort: "lswi_test", organisationId: 2},
+    {type: "adm", accountName: "lkrueger", passwort: "lswi_test", organisationId: 2},
 
 ] }
