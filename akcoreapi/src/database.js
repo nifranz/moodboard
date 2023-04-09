@@ -8,7 +8,7 @@ let akcoredb = new Sequelize(
     connection.db_password,
     {
         host: connection.db_host,
-        dialect: 'mysql',
+        dialect: 'mariadb',
         logging: false,
     }    
 )
