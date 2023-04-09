@@ -23,7 +23,6 @@ const Abteilung = require('./models/abteilung')
 const Mitarbeiter = require('./models/mitarbeiter')
 const Projekt = require('./models/projekt')
 const Umfrage = require('./models/umfrage')
-const { Console } = require('console')
 require('./models/associations')
 
 
@@ -78,7 +77,7 @@ app.post("/verifyLogin", async (req, res) => {
             {type: "cm", accountName: "ngronau", passwort: "lswi_test", organisationId: 2},
 
             {type: "adm", accountName: "awolf", passwort: "lswi_test", organisationId: 2},
-
+            {type: "adm", accountName: "neuaccount", passwort: "lswi_test2", organisationId: 2},
         ]
 
         let data = req.body; // get data from request body
@@ -86,7 +85,10 @@ app.post("/verifyLogin", async (req, res) => {
 
         let account;
         for (a of ACCOUNTS) { // check if there is an account matching the requested accountName
-            if (a.accountName == data.accountName) account = a;
+            if (a.accountName == data.accountName) {
+                account = a;
+                break;
+            }
         }
 
         if (!account) { // if no account is found send back HTTP error
