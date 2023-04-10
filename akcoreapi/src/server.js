@@ -24,12 +24,10 @@ const User = require('./models/user')
 const Mitarbeiter = require('./models/mitarbeiter')
 const Projekt = require('./models/projekt')
 const Umfrage = require('./models/umfrage')
-const { Console } = require('console')
 require('./models/associations')
 
 // Controllers
 const UserController = require('./controllers/user')
-
 
 // creating and configuring expressjs server 
 const PORT = 3001;

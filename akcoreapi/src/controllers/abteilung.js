@@ -4,7 +4,7 @@ const OrganisationModel = require('../models/organisation');
 const AbteilungModel = require('../models/abteilung');
 require('../models/associations');
 
-const { HTTP } = require('../helper');
+const { HTTP } = require('../helper'); //HTTP error codes
 
 const AbteilungController = {};
 
