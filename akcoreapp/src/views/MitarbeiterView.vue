@@ -3,7 +3,7 @@
   <LoadingComponent v-if="loading" :loading="this.loading" />
   <ErrorComponent v-if="error" :error="this.error" />
   <div v-if="!error" class="mt-3">
-    <form v-if="!loading && abteilungen.length" class="needs-validation g-3" novalidate>
+    <form v-if="!loading && abteilungen.length" class="needs-validation g-3" >
         <h5>Mitarbeiter hinzufügen:</h5>
         <div class="row">
           <div class="col">
@@ -101,38 +101,6 @@
       </div>
     </form>
 
-    <form v-if="!loading && abteilungen.length" class="needs-validation g-3" novalidate>
-      <h5>Mitarbeiter hinzufügen:</h5>
-      <div class="row">
-        <div class="col">
-          <div class="input-group mb-3">
-            <span class="input-group-text" id="basic-addon1">Name</span>
-            <input type="text" class="form-control" v-model="model.mitarbeiter.mitarbeiterName" placeholder="Name" >
-          </div>
-        </div>
-        <div class="col">
-          <div class="input-group mb-3">
-            <span class="input-group-text" id="basic-addon1">Email</span>
-            <input type="text" class="form-control" v-model="model.mitarbeiter.mitarbeiterEmail" placeholder="E-Mail" required>
-          </div>
-        </div>
-        <div class="col-3">
-          <div class="input-group mb-3">
-            <span class="input-group-text" id="basic-addon1">Abteilung</span>
-            <select class="form-control" v-model="model.mitarbeiter.abteilungId" >
-              <option disabled value=undefined>Bitte auswählen</option>
-              <option v-for="abt in abteilungen" :key="abt" v-bind:value="'' + abt.abteilungId">{{ abt.abteilungName }}</option>
-            </select> 
-          </div>
-        </div>
-        <div class="col-2">
-          <div class="btn-container">
-            <button class="btn btn-outline-success" style="width:100%;" @click.prevent="createMitarbeiter" type="submit">Create</button>
-          </div>
-        </div>
-
-      </div> 
-    </form>
 
     <form v-if="!loading" class="needs-validation g-3" novalidate>
       <h5>Mitarbeiter durch CSV hinzufügen:</h5>
@@ -153,30 +121,7 @@
         </div>
         <table id="csv-table"></table>
       </div>
-        
-      
-      
-        
-
     </form>
-  
-    <form v-if="!loading" class="needs-validation g-3" novalidate>
-      <h5>Abteilung hinzufügen:</h5>
-      <div class="row">
-        <div class="col">
-          <div class="input-group mb-3">
-            <span class="input-group-text" id="basic-addon1">Abteilungsname</span>
-            <input type="text" class="form-control" v-model="model.abteilung.abteilungName" placeholder="Name">
-          </div>
-        </div>
-        <div class="col-2">
-          <div class="btn-container">
-            <button class="btn btn-outline-success" style="width:100%;" @click.prevent="createAbteilung" type="submit">Create</button>
-          </div>
-        </div>
-      </div>
-    </form>
-    <!-- create-new-mitarbeiter row -->
   </div>
 </template>
 
@@ -219,9 +164,6 @@
       console.log("sesh storg");
       console.log(sessionStorage.organisationId)
     },
-
-
-
     methods: {
       async showToast(content="error"){
         var x = document.getElementById('snackbar');
@@ -261,6 +203,7 @@
           this.loading = true;
           try {
             await api.createMitarbeiter(ma);
+            console.log("showcreatetoast")
             this.showToast(`Mitarbeiter "${ma.mitarbeiterName}" erfolgreich erstellt.`);
           } catch (e) {
             console.log(e);
