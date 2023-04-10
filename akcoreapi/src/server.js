@@ -25,7 +25,6 @@ const Projekt = require('./models/projekt')
 const Umfrage = require('./models/umfrage')
 require('./models/associations')
 
-
 // creating and configuring expressjs server 
 const PORT = 3001;
 let app = express();

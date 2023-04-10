@@ -149,8 +149,12 @@ function getYesterday() {
     if (month < 10) {
         month = "0" + month;
     } 
+    let day = d.getDate();
+    if (day < 10) {
+        day = "0" + day;
+    }
     // Return the previous day's date as a string in the format 'YYYY-MM-DD'.
-    return '' + `${d.getFullYear()}-${month}-${d.getDate()}`
+    return '' + `${d.getFullYear()}-${month}-${day}`
 }
 
 const ERROR_LOG_PATH = __dirname + "/../logs/error.log"
